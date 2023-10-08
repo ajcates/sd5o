@@ -1,0 +1,556 @@
+// ==UserScript==
+// @name        New script - sdsheriff.gov
+// @namespace   Violentmonkey Scripts
+// @match       https://callsforservice.sdsheriff.gov/
+// @grant       none
+// @version     1.0
+// @author      -
+// @description 2/23/2023, 6:03:36 PM
+//
+// ==/UserScript==/
+//
+//
+
+const storage = window.localStorage;
+
+class Nearby {
+  constructor(table) {
+    this.table = table;
+    this.buttonsElement = document.getElementById('buttons');
+    this.permisson = this.getPermission();
+    this.button = this.createButton();
+    if (this.permisson) {
+      this.buttonsElement.prepend(this.button);
+    } else {
+      this.addDistanceColumn();
+    }
+
+    
+
+  }
+
+  
+
+  createButton() {
+    //quick hack to prevent multiple buttons
+    let oldbutton = this.buttonsElement.querySelector('#nearme');
+    if (oldbutton) {
+      return oldbutton;
+    } 
+    
+    let button = document.createElement('button');
+    button.id = 'nearme';
+    button.innerHTML = '📏';
+    button.addEventListener('click', this.askPermission.bind(this));
+
+    return button;
+  }
+  
+
+  askPermission() {
+    console.log("nearme");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        console.log('Latitude:', position.coords.latitude);
+        console.log('Longitude:', position.coords.longitude);
+        window.localStorage.setItem('longitude',  position.coords.longitude);
+        window.localStorage.setItem('latitude', position.coords.latitude);
+        this.coords = position.coords;
+        this.addDistanceColumn();
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+      }
+    );
+  }
+
+  getPermission() {
+    if (navigator.geolocation) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  getLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        this.coords = position.coords;
+      });
+    }
+    return this.coords;
+  }
+  async addDistanceColumn() {
+    let table = document.querySelector('table');
+    console.log(table);
+    let header = table.querySelector('thead tr');
+    let th = document.createElement('th');
+    th.innerHTML = 'Distance';
+                               
+    header.prepend(th);
+
+    let rows = table.querySelectorAll('tbody tr');
+    rows.forEach((row) => {
+      let td = document.createElement('td');
+      row.prepend(td);
+    });
+    for(const row of rows) {
+      if (row.classList.contains('map')) {
+        const atd = row.querySelector('td:first-child');
+        atd.colSpan = atd.colSpan + 1;
+        continue;
+      }
+      let address = row.querySelector('td.Address').innerText + ' ' + row.querySelector('td.Commuinty') + ' California';
+      let spot = await this.geoCodeCache(address);
+      console.log(spot);
+      //this.coords = this.getLocation();
+      console.log(this.coords);
+
+      const lng = this.coords.longitude;
+      const lat = this.coords.latitude;
+      //let distance = this.getDistanceInMilesAndFeet(spot);
+      let miles = calcCrow(spot.lat, spot.lng, lat, lng);
+      if (miles < 1) {
+        row.classList.add('nearby');
+        row.style.backgroundColor = 'rgba(255, 0, 0, 0.5);';
+        var cachedEvent = localStorage.getItem(row.dataset.eventNumber);
+        if (cachedEvent) {
+          cachedEvent = JSON.parse(cachedEvent);
+          cachedEvent.nearby = true;
+          localStorage.setItem(row.dataset.eventNumber, JSON.stringify(cachedEvent));
+        }
+      } else if(miles < 3) {
+        row.style.backgroundColor = 'rgba(0,0,255,0.2) !important';
+      }
+      let output = prettyPrintDistance(miles);
+      row.querySelector('td:first-child').innerHTML = output;
+    }
+
+    const sortableTable = new SortableTable("table");
+
+  }
+
+  getDistanceInMilesAndFeet(spot) {
+  // Convert latitudes and longitudes to radians
+    const lat1Radians = toRadians(spot.lat);
+    const lng1Radians = toRadians(spot.lng);
+    const lat2Radians = toRadians(this.coords.lat);
+    const lng2Radians = toRadians(this.coords.lng);
+
+    // Calculate the distance using the Haversine formula
+    const earthRadiusInMiles = 3958.8;
+    const deltaLat = lat2Radians - lat1Radians;
+    const deltaLng = lng2Radians - lng1Radians;
+    const a = Math.pow(Math.sin(deltaLat / 2), 2) +
+              Math.cos(lat1Radians) * Math.cos(lat2Radians) *
+              Math.pow(Math.sin(deltaLng / 2), 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceInMiles = earthRadiusInMiles * c;
+    const distanceInFeet = distanceInMiles * 5280;
+
+    // Round the distance to the nearest mile and foot
+    const distanceInMilesRounded = Math.round(distanceInMiles);
+    const distanceInFeetRounded = Math.round(distanceInFeet);
+
+    // Return an object with the distance in miles and feet
+    return {
+      miles: distanceInMilesRounded,
+      feet: distanceInFeetRounded - (distanceInMilesRounded * 5280),
+    };
+  }
+
+ async geoCodeCache(address) {
+  // Check if the coordinates are available in the browser's key storage cache
+  const cache = window.localStorage;
+  const cachedLatLng = cache.getItem(address);
+  if (cachedLatLng !== null) {
+    const coords = JSON.parse(cachedLatLng);
+    console.log('Cache hit');
+    return coords;
+  } 
+
+  // If the coordinates are not available in the cache, call the getLatLngForAddress function to get them
+  const coords = await getLatLngForAddress(address);
+  // Cache the coordinates in the browser's key storage cache for future use
+  cache.setItem(address, JSON.stringify(coords));
+
+  // Return the coordinates
+  return coords;
+}
+
+
+
+}
+
+
+ 
+    //This function takes in latitude and longitude of two location and returns the distance between them as the crow flies (in km)
+    function calcCrow(lat1, lon1, lat2, lon2) {
+      console.log(`https://www.distance.to/${lat1},${lon1}/${lat2},${lon2}`);
+      var R = 3958.761; // m
+      var dLat = toRad(lat2-lat1);
+      var dLon = toRad(lon2-lon1);
+      var lat1 = toRad(lat1);
+      var lat2 = toRad(lat2);
+
+      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+
+        Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+      var d = R * c;
+      console.log(`miles: ${d}`);
+      return d;
+    }
+//a function that pretty prints miles that are a floating number to tenths of a mile and feet
+//so 1.5686 miles becomes 1.5 miles and 362 feet
+//it will return back a string
+function prettyPrintDistance(miles) {
+  miles = miles * 10;
+  let feet = miles * 528;
+  feet = feet % 5280;
+  feet = Math.round(feet);
+  miles = Math.floor(miles);
+  miles = miles / 10;
+  return `${miles} miles ${feet} feet`;
+}
+
+    // Converts numeric degrees to radians
+    function toRad(Value) 
+    {
+        return Value * Math.PI / 180;
+    }
+
+function toRadians(degrees) {
+  return degrees * Math.PI / 180;
+}
+async function getLatLngForAddress(address) {
+  // Construct the Google Maps Geocoding API URL with the address parameter
+  const apikey = "AIzaSyAhHsSxRyTrAV5cU7bzyXvK1M54S0RVADY"
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apikey}`;
+
+  try {
+    // Make a request to the Geocoding API
+    const response = await fetch(url);
+    const data = await response.json();
+    console.log(data);
+    // Check if the API returned a successful response
+    if (data.status === 'OK') {
+      // Extract the latitude and longitude from the first result
+      return data.results[0].geometry.location;
+
+      // Return an object with the latitude and longitude
+    } else {
+      // Log an error message if the API did not return a successful response
+      console.error(`Geocoding API error: ${data.status}`);
+      return null;
+    }
+  } catch (error) {
+    // Log any errors that occur during the API request
+    console.error('Error getting latitude and longitude:', error);
+    return null;
+  }
+}
+
+class CallsForService {
+  constructor() {
+    //this.url = "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents?code=2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju/Cig==";
+    //this.url = "/events";
+    this.url = "https://corsproxy.io/?https%3A%2F%2Fleag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us%2Fapi%2FGetCADEvents%3Fcode%3D2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju%2FCig%3D%3D"
+    this.buttonsElement = document.getElementById('buttons');
+    this.listingElement = document.getElementById('listing');
+    this.addRefreshButton();
+    this.addTable();
+  }
+  addRefreshButton() {
+    this.refreshButton = document.createElement('button');
+    this.refreshButton.innerHTML = '🔃';
+    this.refreshButton.addEventListener('click', this.refresh.bind(this));
+    this.buttonsElement.appendChild(this.refreshButton);
+  }
+  refresh() {
+    this.table = document.querySelector('table');
+    this.table.remove();
+    this.addTable();
+  }
+  addTable() {
+    fetchJson(this.url).then(((json) => {
+      console.log(json);
+      this.events = json;
+
+      this.table = this.buildTable(this.events);
+      this.listingElement.appendChild(this.table);
+      this.nearby = new Nearby(this.table);
+    }).bind(this));
+  }
+  
+  buildTable(jsonData) {
+  // create a table element
+  const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const tbody = document.createElement('tbody');
+    const data = jsonData;
+
+  // create a header row with column names
+  const header = document.createElement('tr');
+    console.log(data);
+  let keys = Object.keys(jsonData.Events[0]);
+ /*EventNumber": "E8375208",
+      "IsOpen": true,
+      "DateTime": "02/24/23 06:44",
+      "Address": "400 HARDELL LN",
+      "ServiceArea": "VISTA / FALLBROOK",
+      "Community": "UNINCORPORATED VISTA",
+      "EventType": "11-7 PROWLER"*/ 
+  let headers = ["Address", "DateTime", "EventType"];
+
+  for (const key of headers) {
+    console.log(key);
+
+    
+    
+    const th = document.createElement('th');
+    th.classList.add(key);
+    th.textContent = key;
+    header.appendChild(th);
+  }
+  thead.appendChild(header);
+
+  // create a row for each event object
+  
+  for (const event of jsonData.Events) {
+    const row = document.createElement('tr');
+
+    var cachedEvent = localStorage.getItem(event.EventNumber);
+    if(cachedEvent){
+      console.log("cached event");
+      var oldEvent = JSON.parse(cachedEvent);
+      console.log(oldEvent);
+      if(oldEvent['nearby']){
+        event['nearby'] = true;
+      }
+      for(var k in oldEvent){
+        if(event[k] != oldEvent[k]){
+          console.log("event changed");
+          localStorage.setItem(event.EventNumber, JSON.stringify(event));
+          event["changed"] = true;
+          break;
+        }
+      }
+    } else {
+      console.log("new event");
+      localStorage.setItem(event.EventNumber, JSON.stringify(event));
+      event["new"] = true;
+    }
+
+    if(event["changed"]){
+      row.classList.add("changed");
+    }
+    if(event["new"]){
+      row.classList.add("new");
+    }
+    if(event["nearby"]){
+      row.classList.add("nearby");
+    }
+    row.dataset.eventNumber = event.EventNumber;
+
+    // create a cell for each property of the event object
+    for (const key of headers) {
+      const cell = document.createElement('td');
+    if(key == "Address"){
+      let address = event[key] + ", " + event["Community"];
+      let eventNumber = event["EventNumber"];
+      cell.innerHTML = `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}" target="_blank">${address}</a>`;
+      //make a details element that has a map in it
+    //  cell.innerHTML += `<details><summary>${address}</summary><iframe width="100%" height="300" src="https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed"></iframe>${eventNumber}</details>`;
+    } else if(key == "DateTime"){
+        cell.textContent = prettyTime(event[key]);
+      } else {
+          cell.textContent = event[key];
+      }
+      cell.classList.add(key);
+      row.appendChild(cell);
+    }
+    if(event["IsOpen"]){
+      row.classList.add("open");
+    }
+
+    row.addEventListener("click", (e) => {
+
+      console.log(e);
+      if(row.classList.contains("mapopen")){
+        row.classList.remove("mapopen");
+        row.nextElementSibling.remove();
+      } else {
+        const mapRow = document.createElement("tr");
+        mapRow.classList.add("map");
+        const mapCell = document.createElement("td");
+        mapCell.colSpan = document.querySelectorAll("th").length;
+        mapCell.innerHTML = `<iframe width="100%" height="300" src="https://maps.google.com/maps?q=${encodeURIComponent(event["Address"] + ", " + event["Community"])}&t=h&output=embed&z=16"></iframe>`;
+        mapRow.appendChild(mapCell);
+
+        insertAfter(row, mapRow);
+        row.classList.add("mapopen");
+      }
+    });
+
+    tbody.prepend(row);
+  }
+  table.appendChild(thead);
+  table.appendChild(tbody);
+
+  const sortableTable = new SortableTable("table");
+  return table;
+}
+}
+function prettyTime(datestring){
+  const diff = new Date(datestring) - new Date();
+  const seconds = diff / 1000; // -1937124.765
+  const minutes = seconds / 60; // -5158.739066666666
+  const hours = minutes / 60; // -85.97898444444444
+
+  const formatter = new Intl.RelativeTimeFormat('en-US', {
+      numeric: 'auto',
+  })
+
+  return formatter.format(minutes, 'minute'); // 85.979 hours ago
+}
+function fetchJson(url) {
+  return fetch(url).then(async (response) => {
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message);
+    }
+    return await data;
+  }).then((data) => {
+    return data;
+  });
+}
+function insertAfter(referenceNode, newNode) {
+    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+}
+
+class SortableTable {
+  constructor(selector) {
+    this.tables = document.querySelectorAll(selector);
+
+    for (let table of this.tables) {
+      const thead = table.querySelector("thead");
+      const headers = thead.querySelectorAll("th");
+
+      for (let header of headers) {
+        if(header.classList.contains("sortable")){
+          continue;
+        }
+        header.classList.add("sortable");
+        const link = document.createElement("a");
+        link.href = "#";
+        link.textContent = header.innerText;
+        header.innerHTML = "";
+        header.appendChild(link);
+      }
+
+      thead.addEventListener("click", (ev) => {
+        if (ev.target.tagName.toLowerCase() == "a") {
+          const columnIndex = this.siblingIndex(ev.target.parentNode);
+          this.sortRows(table, columnIndex);
+          ev.preventDefault();
+        }
+      });
+    }
+  }
+
+  siblingIndex(node) {
+    let count = 0;
+
+    while ((node = node.previousElementSibling)) {
+      count++;
+    }
+
+    return count;
+  }
+
+  sortRows(table, columnIndex) {
+    const rows = table.querySelectorAll("tbody tr");
+    const sel = `thead th:nth-child(${columnIndex + 1})`;
+    const sel2 = `td:nth-child(${columnIndex + 1})`;
+    const classList = table.querySelector(sel).classList;
+    let cls = "";
+    let allNum = true;
+    let values = [];
+
+    for (let index = 0; index < rows.length; index++) {
+      const node = rows[index].querySelector(sel2);
+      let val = node.innerText;
+
+      if (isNaN(val)) {
+        allNum = false;
+      } else {
+        val = parseFloat(val);
+      }
+
+      values.push({ value: val, row: rows[index] });
+    }
+
+    if (classList) {
+      if (classList.contains("DateTime")) {
+        cls = "date";
+      } else if (classList.contains("number")) {
+        cls = "number";
+      }
+    }
+
+    if (cls == "" && allNum) {
+      cls = "number";
+    }
+
+    if (cls == "number") {
+      values.sort((a, b) => this.sortNumber(a.value, b.value));
+      values = values.reverse();
+    } else if (cls == "date") {
+      values.sort((a, b) => this.sortDateVal(a.value, b.value));
+    } else {
+      values.sort((a, b) => this.sortTextVal(a.value, b.value));
+    }
+
+    for (let value of values) {
+      table.querySelector("tbody").appendChild(value.row);
+    }
+  }
+
+  sortNumber(a, b) {
+    return a - b;
+  }
+
+  sortDateVal(a, b) {
+    const dateA = Date.parse(a);
+    const dateB = Date.parse(b);
+    return this.sortNumber(dateA, dateB);
+  }
+
+  sortTextVal(a, b) {
+    const textA = (a + "").toUpperCase();
+    const textB = (b + "").toUpperCase();
+
+    if (textA < textB) {
+      return -1;
+    }
+
+    if (textA > textB) {
+      return 1;
+    }
+
+    return 0;
+  }
+}
+
+// Example usage
+//const sortableTable = new SortableTable("table.sortable");
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const callsForService = new CallsForService();
+  
+
+
+});
+
+
