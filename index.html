@@ -1,16 +1,32 @@
+
 <!DOCTYPE html>
-  <html lang="en">
-  <head>
-      <meta charset="UTF-8">
+<html>
+<head>
+
+<!-- Responsive -->
+<meta charset="utf-8">
+<meta name="viewport"
+		content="width=device-width,
+				initial-scale=1">
+<meta http-equiv="X-UA-Compatible"
+		content="ie=edge">
+		<meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>SD Sheriff Calls For Service</title>
       <meta name="description" content="Calls for service for the San Diego Sheriff's Department" />
 
-      <!-- Add the web app manifest file -->
-      <!--<link rel="manifest" href="/manifest.json">--?
 
-      <!-- Add the service worker -->
-      <style>
+<!-- Meta Tags required for
+	Progressive Web App -->
+<meta name=
+"apple-mobile-web-app-status-bar"
+		content="#aa7700">
+<meta name="theme-color"
+		content="black">
+
+<!-- Manifest File link -->
+<link rel="manifest"	href="manifest.json">
+    <style>
           /* a simple black material design theme */
   * {
       box-sizing: border-box;
@@ -128,8 +144,10 @@
             clear: both;
           }
   </style>
-  </head>
-  <body>
+  
+</head>
+
+<body>
       <header>
           <h1>☎️ For 🚓</h1>
           <input type="text" id="filter" placeholder="Filter" />
@@ -141,6 +159,10 @@
 
       </main>
       <!-- Add the script to register the service worker -->
+<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+<script type="text/javascript">
+
+</script>
       <script>
   // ==UserScript==
   // @name        New script - sdsheriff.gov
@@ -156,7 +178,16 @@
   //
 
   const storage = window.localStorage;
+     /*
+var geocoder = new google.maps.Geocoder();
+var address = "new york";
 
+if (status == google.maps.GeocoderStatus.OK) {
+    var latitude = results[0].geometry.location.lat();
+    var longitude = results[0].geometry.location.lng();
+    alert(latitude);
+    } 
+}); */
   class Nearby {
     constructor(table) {
       this.table = table;
@@ -617,6 +648,26 @@
 
   });
   </script>
+  <script>
+	window.addEventListener('load', () => {
+	registerSW();
+	});
+
+	// Register the Service Worker
+	async function registerSW() {
+	if ('serviceWorker' in navigator) {
+		try {
+		await navigator
+				.serviceWorker
+				.register('serviceworker.js');
+		}
+		catch (e) {
+		console.log('SW registration failed');
+		}
+	}
+	}
+</script>
+
   </body>
   </html>
 
