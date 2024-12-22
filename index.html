@@ -413,12 +413,18 @@ if (status == google.maps.GeocoderStatus.OK) {
       return null;
     }
   }
-
+        
   class CallsForService {
     constructor() {
-      //this.url = "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents?code=2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju/Cig==";
+      //                https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents?code=2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju/Cig==";
+
+     // nn nnnnnnn jj  "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents?code=2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju/Cig==&_=1734476320069"
+ var urlE = encodeURIComponent( "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents?code=2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju/Cig==&_=" + (Math.floor(Date.now() / 1000))).toString();
+        console.log(urlE);
+                                              
+      this.url =  "https://corsproxy.io/?" + urlE;
       //this.url = "/events";
-      this.url = "https://corsproxy.io/?https%3A%2F%2Fleag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us%2Fapi%2FGetCADEvents%3Fcode%3D2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju%2FCig%3D%3D"
+   //   this.url = "https://corsproxy.io/?https%3A%2F%2Fleag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us%2Fapi%2FGetCADEvents%3Fcode%3D2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju%2FCig%3D%3D"
       this.buttonsElement = document.getElementById('buttons');
       this.listingElement = document.getElementById('listing');
       this.updateElement = document.getElementById('update');
