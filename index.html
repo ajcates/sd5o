@@ -143,6 +143,13 @@
           main {
             clear: both;
           }
+          #calls-status {
+            display: inline-block;
+            margin-left: 0.5rem;
+          }
+          #calls-status.error {
+            color: #ff8a80;
+          }
   </style>
   
 </head>
@@ -153,16 +160,15 @@
           <input type="text" id="filter" placeholder="Filter" />
           <nav id="buttons"></nav>
       </header>
-      <div>Last uodated <span data-time="" id="update"></span></div>
+      <div>
+        Last updated <span data-time="" id="update">loading…</span>
+        <span id="calls-status" role="status" aria-live="polite"></span>
+      </div>
       <main id="listing">
 
 
       </main>
       <!-- Add the script to register the service worker -->
-<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
-<script type="text/javascript">
-
-</script>
       <script>
   // ==UserScript==
   // @name        New script - sdsheriff.gov
@@ -416,23 +422,22 @@ if (status == google.maps.GeocoderStatus.OK) {
         
   class CallsForService {
     constructor() {
-      //                https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents?code=2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju/Cig==";
-
-     // nn nnnnnnn jj  "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents?code=2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju/Cig==&_=1734476320069"
- var urlE = encodeURIComponent( "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents?code=2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju/Cig==&_=" + (Math.floor(Date.now() / 1000))).toString();
-        console.log(urlE);
-                                              
-      this.url =  "https://corsproxy.io/?" + urlE;
-      //this.url = "/events";
-   //   this.url = "https://corsproxy.io/?https%3A%2F%2Fleag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us%2Fapi%2FGetCADEvents%3Fcode%3D2FtsNzCo1edSQu4072cAjnfLQ3rViLBuESecNVeGE9s464j7ju%2FCig%3D%3D"
+      this.apiUrl = "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents";
+      this.apiKey = "LrxsShPJ3sVycwPqa_Dk-EajBxZJfQGbDBQK1c5wbBoBAzFu2CxMqA==";
+      this.proxyUrl = "https://api.cors.syrins.tech/?url=";
       this.buttonsElement = document.getElementById('buttons');
       this.listingElement = document.getElementById('listing');
       this.updateElement = document.getElementById('update');
-            this.filterElement = document.getElementById('filter');
-           console.log("hello");
-            console.log(this.updateElement);
+      this.statusElement = document.getElementById('calls-status');
+      this.filterElement = document.getElementById('filter');
       this.addRefreshButton();
       this.addTable();
+    }
+    getRequestUrl() {
+      const sourceUrl = new URL(this.apiUrl);
+      sourceUrl.searchParams.set('code', this.apiKey);
+      sourceUrl.searchParams.set('_', Date.now().toString());
+      return this.proxyUrl + encodeURIComponent(sourceUrl.toString());
     }
     addRefreshButton() {
       this.refreshButton = document.createElement('button');
@@ -442,31 +447,38 @@ if (status == google.maps.GeocoderStatus.OK) {
     }
     refresh() {
       this.table = document.querySelector('table');
-      this.table.remove();
+      if (this.table) {
+        this.table.remove();
+      }
       this.addTable();
     }
-    addTable() {
-      fetchJson(this.url).then(((json) => {
-        console.log(json);
-        console.log(json.LastUpdated);
+    async addTable() {
+      this.refreshButton.disabled = true;
+      this.statusElement.classList.remove('error');
+      this.statusElement.textContent = '';
+
+      try {
+        const json = await fetchJson(this.getRequestUrl());
+        if (!json || !Array.isArray(json.Events)) {
+          throw new Error('The calls service returned an unexpected response.');
+        }
+
         this.events = json;
         this.updateElement.innerHTML = prettyTime(this.events.LastUpdated);
-
         this.updateElement.dataset.time = this.events.LastUpdated;
         this.table = this.buildTable(this.events);
         this.listingElement.appendChild(this.table);
-        
-        //i need the uodated element to be updated with the relative time "Updated 2 minutes ago"
-        console.log(this.updateElement);
-        //this.updateElement.dataset.time = new Date();
-        
-        //var relativeTime = prettyTime(new Date());
-        //this.updateElement.innerHTML = `Updated ${relativeTime}`;
-        //this.nearby = new Nearby(this.table);
-
         this.tableFilter = new TableFilter(this.table);
         this.tableFilter.runFilter();
-      }).bind(this));
+      } catch (error) {
+        console.error('Unable to load calls for service:', error);
+        this.updateElement.textContent = 'unavailable';
+        this.updateElement.removeAttribute('data-time');
+        this.statusElement.classList.add('error');
+        this.statusElement.textContent = error.message;
+      } finally {
+        this.refreshButton.disabled = false;
+      }
     }
     
     buildTable(jsonData) {
@@ -479,7 +491,6 @@ if (status == google.maps.GeocoderStatus.OK) {
     // create a header row with column names
     const header = document.createElement('tr');
       console.log(data);
-    let keys = Object.keys(jsonData.Events[0]);
    /*EventNumber": "E8375208",
         "IsOpen": true,
         "DateTime": "02/24/23 06:44",
@@ -598,18 +609,30 @@ if (status == google.maps.GeocoderStatus.OK) {
     });
     console.log(datestring);
 
-    return formatter.format(minutes, 'minute'); // 85.979 hours ago
+    return formatter.format(Math.round(minutes), 'minute');
   }
-  function fetchJson(url) {
-    return fetch(url).then(async (response) => {
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message);
-      }
-      return await data;
-    }).then((data) => {
-      return data;
+  async function fetchJson(url) {
+    const response = await fetch(url, {
+      cache: 'no-store',
     });
+    const responseText = await response.text();
+    let data;
+
+    try {
+      data = JSON.parse(responseText);
+      if (typeof data === 'string') {
+        data = JSON.parse(data);
+      }
+    } catch (error) {
+      throw new Error(`Calls service returned invalid JSON (HTTP ${response.status}).`);
+    }
+
+    if (!response.ok) {
+      const message = data.message || data.error || response.statusText || 'Request failed';
+      throw new Error(`${message} (HTTP ${response.status}).`);
+    }
+
+    return data;
   }
   function insertAfter(referenceNode, newNode) {
       referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
@@ -676,4 +699,3 @@ if (status == google.maps.GeocoderStatus.OK) {
 
   </body>
   </html>
-
