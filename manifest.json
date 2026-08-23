@@ -8,7 +8,7 @@
   "scope": "/",
   "short_name": "sd50",
   "start_url": "/",
-  "theme_color": "#ff0303",
+  "theme_color": "#000000",
   "categories": [
     "government",
     "news"

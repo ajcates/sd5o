@@ -2,172 +2,927 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>SD Sheriff Calls For Service</title>
+  <meta name="description" content="Calls for service for the San Diego Sheriff's Department">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/favicon-32x32.png">
+  <style>
+    :root {
+      color-scheme: dark;
+      --primary: #4d9dff;
+      --on-primary: #001a3a;
+      --primary-container: #0f2c4d;
+      --on-primary-container: #bfdcff;
+      --secondary: #ff4d4d;
+      --on-secondary-container: #ffd4d4;
+      --secondary-container: #4a1414;
+      --surface: #000000;
+      --surface-container: #0a0a0d;
+      --surface-container-high: #121218;
+      --surface-container-highest: #1a1a22;
+      --on-surface: #eaeaf0;
+      --on-surface-variant: #9a9aa8;
+      --outline: #5a5a68;
+      --outline-variant: #26262f;
+      --error: #ff6b6b;
+      --error-container: #4a1414;
+      --shadow: rgba(0, 0, 0, 0.6);
+      --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+      --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+    }
 
-<!-- Responsive -->
-<meta charset="utf-8">
-<meta name="viewport"
-		content="width=device-width,
-				initial-scale=1">
-<meta http-equiv="X-UA-Compatible"
-		content="ie=edge">
-		<meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>SD Sheriff Calls For Service</title>
-      <meta name="description" content="Calls for service for the San Diego Sheriff's Department" />
-
-
-<!-- Meta Tags required for
-	Progressive Web App -->
-<meta name=
-"apple-mobile-web-app-status-bar"
-		content="#aa7700">
-<meta name="theme-color"
-		content="black">
-
-<!-- Manifest File link -->
-<link rel="manifest"	href="manifest.json">
-    <style>
-          /* a simple black material design theme */
-  * {
+    * {
       box-sizing: border-box;
+    }
+
+    html {
+      min-width: 320px;
+      background: var(--surface);
+    }
+
+    body {
+      min-height: 100vh;
       margin: 0;
+      color: var(--on-surface);
+      background:
+        radial-gradient(circle at 8% -12%, rgba(77, 157, 255, 0.10), transparent 30rem),
+        radial-gradient(circle at 96% 0%, rgba(255, 77, 77, 0.07), transparent 28rem),
+        var(--surface);
+      font-family: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button,
+    a,
+    input {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .app-shell {
+      width: min(100%, 1400px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 0 20px 32px;
+    }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      margin: 0 -20px;
+      background: rgba(0, 0, 0, 0.9);
+      border-bottom: 1px solid var(--outline-variant);
+      backdrop-filter: blur(18px) saturate(135%);
+      animation: app-bar-enter 360ms var(--ease-standard) both;
+    }
+
+    .top-app-bar {
+      display: grid;
+      grid-template-columns: minmax(220px, auto) auto;
+      grid-template-areas: "brand actions";
+      align-items: center;
+      gap: 20px;
+      min-height: 64px;
+      padding: max(8px, env(safe-area-inset-top)) 20px 8px;
+    }
+
+    .search-bar {
+      display: flex;
+      align-items: center;
+      height: 0;
+      overflow: hidden;
+      padding: 0 20px;
+      transition: height 220ms var(--ease-emphasized);
+    }
+
+    .search-bar.open {
+      height: 60px;
+    }
+
+    .search-bar .search-field {
+      width: 100%;
+    }
+
+    .brand {
+      grid-area: brand;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      color: var(--on-primary-container);
+      background: linear-gradient(145deg, #1a4a80, var(--primary-container));
+      border: 1px solid rgba(77, 157, 255, 0.28);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 20, 45, 0.4);
+    }
+
+    .brand-mark svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .brand-copy {
+      min-width: 0;
+    }
+
+    .eyebrow {
+      display: block;
+      margin-bottom: 1px;
+      color: var(--on-surface-variant);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      overflow: hidden;
+      margin: 0;
+      font-size: clamp(1.02rem, 1.6vw, 1.2rem);
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .search-field {
+      position: relative;
+      display: flex;
+      align-items: center;
+      height: 40px;
+      color: var(--on-surface-variant);
+      background: var(--surface-container-high);
+      border: 1px solid var(--outline-variant);
+      border-radius: 12px;
+      transition: background 160ms var(--ease-standard), border-color 160ms var(--ease-standard), box-shadow 160ms var(--ease-standard);
+    }
+
+    .search-field:focus-within {
+      color: var(--primary);
+      background: var(--surface-container-highest);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(77, 157, 255, 0.14);
+    }
+
+    .search-field svg {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      margin-left: 13px;
+      fill: currentColor;
+      pointer-events: none;
+    }
+
+    #filter {
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      padding: 0 16px 0 12px;
+      color: var(--on-surface);
+      background: transparent;
+      border: 0;
+      outline: 0;
+    }
+
+    #filter::placeholder {
+      color: var(--on-surface-variant);
+      opacity: 0.84;
+    }
+
+    #buttons {
+      grid-area: actions;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .icon-button {
+      position: relative;
+      display: grid;
+      width: 40px;
+      height: 40px;
       padding: 0;
+      place-items: center;
+      color: var(--on-primary-container);
+      background: var(--primary-container);
+      border: 1px solid rgba(77, 157, 255, 0.22);
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(0, 20, 45, 0.35);
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 140ms var(--ease-standard), background 140ms var(--ease-standard), box-shadow 140ms var(--ease-standard);
+    }
 
-  }
-  body {
-      background-color: #000;
-      color: #fff;
-      font-family: 'Roboto', sans-serif;
-      font-size: .875rem;
+    .icon-button::before {
+      position: absolute;
+      inset: 0;
+      background: currentColor;
+      content: "";
+      opacity: 0;
+      transition: opacity 140ms var(--ease-standard);
+    }
+
+    .icon-button:hover {
+      box-shadow: 0 9px 24px rgba(0, 34, 70, 0.38);
+      transform: translateY(-1px);
+    }
+
+    .icon-button:hover::before {
+      opacity: 0.08;
+    }
+
+    .icon-button:active {
+      transform: scale(0.94);
+    }
+
+    .icon-button:focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 3px;
+    }
+
+    .icon-button:disabled {
+      cursor: wait;
+      opacity: 0.78;
+    }
+
+    .icon-button svg {
+      position: relative;
+      width: 19px;
+      height: 19px;
+      fill: currentColor;
+    }
+
+    .icon-button:disabled svg {
+      animation: spin 720ms linear infinite;
+    }
+
+    .status-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 52px;
+      margin: 14px 0 10px;
+      padding: 10px 16px;
+      background: var(--surface-container);
+      border: 1px solid var(--outline-variant);
+      border-radius: 14px;
+      box-shadow: 0 14px 40px var(--shadow);
+      animation: surface-enter 380ms 60ms var(--ease-standard) both;
+    }
+
+    .feed-summary {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .status-dot {
+      position: relative;
+      flex: 0 0 auto;
+      width: 9px;
+      height: 9px;
+      background: var(--secondary);
+      border: 2px solid rgba(255, 77, 77, 0.3);
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(255, 77, 77, 0.1);
+    }
+
+    .status-panel.loading .status-dot::after {
+      position: absolute;
+      inset: -6px;
+      border: 1px solid var(--secondary);
+      border-radius: inherit;
+      content: "";
+      animation: status-pulse 1.25s var(--ease-standard) infinite;
+    }
+
+    .status-panel.error .status-dot {
+      background: var(--error);
+      border-color: rgba(255, 107, 107, 0.3);
+      box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.1);
+    }
+
+    .status-label {
+      display: block;
+      margin-bottom: 1px;
+      color: var(--on-surface-variant);
+      font-size: 0.66rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .update-line {
       margin: 0;
+      color: var(--on-surface);
+      font-size: 0.85rem;
+    }
+
+    #update {
+      font-weight: 650;
+    }
+
+    .status-meta {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #calls-status,
+    #event-count {
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      padding: 3px 10px;
+      color: var(--on-primary-container);
+      background: rgba(15, 44, 77, 0.85);
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 650;
+      letter-spacing: 0.015em;
+      white-space: nowrap;
+    }
+
+    #event-count {
+      color: var(--on-surface-variant);
+      background: var(--surface-container-highest);
+    }
+
+    .status-panel.error #calls-status {
+      color: var(--error);
+      background: var(--error-container);
+    }
+
+    #listing {
+      min-height: 220px;
+      background: var(--surface-container);
+      border: 1px solid var(--outline-variant);
+      border-radius: 14px;
+      box-shadow: 0 18px 48px var(--shadow);
+      overflow: hidden;
+      animation: surface-enter 420ms 110ms var(--ease-standard) both;
+    }
+
+    .loading-state,
+    .error-state {
+      display: grid;
+      min-height: 240px;
+      padding: 32px;
+      place-items: center;
+      color: var(--on-surface-variant);
+      text-align: center;
+    }
+
+    .loading-content {
+      width: min(100%, 360px);
+    }
+
+    .loading-content p {
+      margin: 0 0 20px;
+      font-weight: 550;
+    }
+
+    .loading-bar {
+      height: 10px;
+      margin-top: 10px;
+      background: linear-gradient(90deg, var(--surface-container-high) 25%, var(--surface-container-highest) 45%, var(--surface-container-high) 65%);
+      background-size: 250% 100%;
+      border-radius: 999px;
+      animation: shimmer 1.1s linear infinite;
+    }
+
+    .loading-bar:nth-child(2) {
+      width: 78%;
+    }
+
+    .loading-bar:nth-child(3) {
+      width: 92%;
+    }
+
+    .loading-bar:nth-child(4) {
+      width: 64%;
+    }
+
+    .error-state strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--error);
+      font-size: 1.05rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+
+    thead {
+      background: var(--surface-container-high);
+    }
+
+    th,
+    td {
+      padding: 8px 14px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--on-surface-variant);
+      background: var(--surface-container-high);
+      border-bottom: 1px solid var(--outline-variant);
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    th.Address,
+    td.Address {
+      width: 42%;
+    }
+
+    th.DateTime,
+    td.DateTime {
+      width: 20%;
+    }
+
+    th.EventType,
+    td.EventType {
+      width: 38%;
+    }
+
+    tbody tr:not(.map) {
+      cursor: pointer;
+      animation: row-enter 280ms var(--ease-standard) both;
+      animation-delay: min(calc(var(--row-index, 0) * 16ms), 220ms);
+      transition: background 140ms var(--ease-standard), opacity 140ms var(--ease-standard);
+    }
+
+    tbody tr:not(.map):hover {
+      background: rgba(77, 157, 255, 0.06);
+    }
+
+    tbody tr:not(.map):focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -3px;
+    }
+
+    td {
+      color: var(--on-surface);
+      border-bottom: 1px solid var(--outline-variant);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    tbody tr.open td:first-child {
+      box-shadow: inset 3px 0 0 var(--secondary);
+    }
+
+    tbody tr:not(.open) {
+      opacity: 0.58;
+    }
+
+    tbody tr:not(.open):hover {
+      opacity: 0.8;
+    }
+
+    td.Address::before {
+      display: inline-flex;
+      margin: 0 7px 3px 0;
+      padding: 1px 6px;
+      color: var(--on-surface-variant);
+      background: var(--surface-container-highest);
+      border-radius: 999px;
+      content: "Closed";
+      font-size: 0.58rem;
+      font-weight: 750;
+      letter-spacing: 0.06em;
+      line-height: 1.5;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    tr.open td.Address::before {
+      color: var(--on-secondary-container);
+      background: var(--secondary-container);
+      content: "Open";
+    }
+
+    .Address a {
+      display: inline;
+      color: var(--on-surface);
+      font-weight: 600;
+      line-height: 1.35;
+      text-decoration: none;
+    }
+
+    .Address a:hover .address-primary {
+      color: var(--primary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .address-primary,
+    .community {
+      display: block;
+    }
+
+    .community {
+      margin-top: 1px;
+      color: var(--on-surface-variant);
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.025em;
+      text-transform: uppercase;
+    }
+
+    td.DateTime {
+      color: var(--on-surface-variant);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.82rem;
+    }
+
+    td.EventType {
+      color: var(--on-surface);
+      font-weight: 520;
+    }
+
+    tr.new td:first-child {
+      box-shadow: inset 3px 0 0 var(--primary);
+    }
+
+    tr.changed td:first-child {
+      box-shadow: inset 3px 0 0 var(--secondary);
+    }
+
+    tr.nearby {
+      background: rgba(255, 77, 77, 0.12);
+    }
+
+    tr.map td {
       padding: 0;
-  }
-  h1 {
-      font-size: 2rem;
-      margin: 0;
-      padding: 1rem;
-  }
-  h2 {
-      font-size: 1.5rem;
-      margin: 0;
-      padding: 1rem;
-  }
-  input {
-      font-size: 1rem;
-      padding: 0.5rem;
-      margin: 0.5rem;
-      border-radius: 0.25rem;
-      border: 1px solid rgba(0,0,0,0.2);
-  }
-  input:focus {
-    border: 1px solid rgba(0,0,0,0.5);
-  }
-  .hidden {
-    display: none;
-  }
+      background: #000000;
+      overflow: hidden;
+    }
 
+    tr.map .map-slide {
+      display: block;
+      height: 0;
+      overflow: hidden;
+      transition: height 260ms var(--ease-emphasized);
+    }
 
+    tr.map.open .map-slide {
+      height: 320px;
+    }
 
-          a {
-              color: #fff;
-              text-decoration: none;
-          }
-          table {
-              border-collapse: collapse;
-              width: 100%;
-          }
-          tr {
-          }
-          tr.new td {
-            border-bottom: 2px dotted #fff;
-          }
-          tr.changed td {
-            border-bottom: 2px dashed #fff;
-          }
-          th {
-            text-align: left;
-            padding: 0.5rem 1rem;
-            text-decoration: none !important;
-          }
-          th, td {
-              padding:  0.5rem 1rem;
-             text-align: left;
-              border-bottom: 1px solid #ccc;
-          }
-          tr:hover {
-            background-color:rgba(255,255,255,0.1);
-          }
-          tr:nth-child(even) {
-              background-color: rgba(255,255,255,0.07);
-          }
-          tbody tr:not(.open) {
-            text-decoration: line-through;
-            color: rgba(255,255,255,0.5);
-          }
-          tbody tr:not(.mapopen):hover {
-            border-bottom: none;
-          }
-          .nearby {
-              box-shadow: 0 0 10px rgba(255,0,0,0.5);
-              color: rgba(255,0,0,1) !important;
-          }
-          tr.open.nearby {
-            text-decoration: underline;
-          }
-          /* 
-             Use relative rem sizing for margins and padding and font-size */
-          button {
-            margin: 0.5rem;
-            padding: 0.5rem;
-            font-size: 1rem;
-            background-color: #4CAF50;
-            background-image: linear-gradient(315deg, #4CAF50 0%, #8BC34A 74%);
-            border: 1px solid rgba(0,0,0,0.2);
-            border-radius: 0.25rem;
-            color: white;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            cursor: pointer;
-            float: left;
-          }
-          header h1 {
-            display: inline-block;
-            float: left;
-          }
-          nav {
-            padding: 0.5rem;
-            display: inline-block;
-            float: right;
-          }
-          main {
-            clear: both;
-          }
-          #calls-status {
-            display: inline-block;
-            margin-left: 0.5rem;
-          }
-          #calls-status.error {
-            color: #ff8a80;
-          }
+    tr.map iframe {
+      display: block;
+      width: 100%;
+      height: 320px;
+      border: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @keyframes app-bar-enter {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes surface-enter {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes row-enter {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes status-pulse {
+      from { opacity: 0.65; transform: scale(0.55); }
+      to { opacity: 0; transform: scale(1.35); }
+    }
+
+    @keyframes shimmer {
+      from { background-position: 100% 0; }
+      to { background-position: -100% 0; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 760px) {
+      .app-shell {
+        padding: 0 10px 22px;
+      }
+
+      .app-header {
+        margin: 0 -10px;
+      }
+
+      .top-app-bar {
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        min-height: 56px;
+        padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+      }
+
+      .search-bar {
+        padding: 0 12px;
+      }
+
+      .brand-mark {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+      }
+
+      .search-field {
+        height: 40px;
+        border-radius: 12px;
+      }
+
+      .icon-button {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+      }
+
+      .status-panel {
+        align-items: flex-start;
+        margin: 10px 0 8px;
+        padding: 10px 12px;
+        border-radius: 14px;
+      }
+
+      .status-meta {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 5px;
+      }
+
+      #calls-status,
+      #event-count {
+        min-height: 24px;
+        padding: 3px 8px;
+        font-size: 0.66rem;
+      }
+
+      #listing {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        overflow: visible;
+      }
+
+      thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        clip: rect(0, 0, 0, 0);
+        overflow: hidden;
+      }
+
+      table,
+      tbody {
+        display: block;
+      }
+
+      tbody {
+        display: grid;
+        gap: 7px;
+      }
+
+      tbody tr:not(.map) {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px 12px;
+        padding: 11px 13px;
+        background: var(--surface-container);
+        border: 1px solid var(--outline-variant);
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+
+      tbody tr:not(.map):hover {
+        background: var(--surface-container-high);
+      }
+
+      tbody tr.open,
+      tbody tr.new,
+      tbody tr.changed {
+        border-left-color: var(--secondary);
+      }
+
+      tbody tr:not(.open) {
+        opacity: 0.68;
+      }
+
+      td,
+      th.Address,
+      td.Address,
+      th.DateTime,
+      td.DateTime,
+      th.EventType,
+      td.EventType {
+        width: auto;
+      }
+
+      td {
+        display: block;
+        padding: 0;
+        border: 0;
+      }
+
+      tbody tr.open td:first-child,
+      tr.new td:first-child,
+      tr.changed td:first-child {
+        box-shadow: none;
+      }
+
+      td.Address {
+        grid-column: 1 / 2;
+        grid-row: 1;
+        min-width: 0;
+      }
+
+      td.Address::before {
+        margin-bottom: 5px;
+      }
+
+      td.DateTime {
+        grid-column: 2 / 3;
+        grid-row: 1;
+        align-self: start;
+        padding-top: 2px;
+        font-size: 0.72rem;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      td.EventType {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        padding-top: 8px;
+        color: var(--primary);
+        border-top: 1px solid var(--outline-variant);
+        font-size: 0.82rem;
+      }
+
+      tr.map {
+        display: block;
+        margin-top: -7px;
+      }
+
+      tr.map td {
+        display: block;
+        padding: 0;
+        background: transparent;
+      }
+
+      tr.map .map-slide {
+        padding: 0 1px;
+      }
+
+      tr.map.open .map-slide {
+        height: 250px;
+        padding: 6px 1px 0;
+      }
+
+      tr.map iframe {
+        height: 244px;
+        border: 1px solid var(--outline-variant);
+        border-radius: 14px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .status-panel {
+        gap: 12px;
+      }
+
+      .status-label {
+        font-size: 0.66rem;
+      }
+
+      .update-line {
+        font-size: 0.88rem;
+      }
+
+      #calls-status {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+      }
+    }
   </style>
-  
 </head>
 
 <body>
-      <header>
-          <h1>☎️ For 🚓</h1>
-          <input type="text" id="filter" placeholder="Filter" />
-          <nav id="buttons"></nav>
+  <div class="app-shell">
+    <div class="app-header">
+      <header class="top-app-bar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M6.62 10.79a15.46 15.46 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.56 3.57.56a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.19 2.45.56 3.57a1 1 0 0 1-.25 1.02l-2.19 2.2Z"/>
+            </svg>
+          </span>
+          <div class="brand-copy">
+            <span class="eyebrow">San Diego County</span>
+            <h1>Calls for Service</h1>
+          </div>
+        </div>
+
+        <nav id="buttons" aria-label="Feed actions"></nav>
       </header>
-      <div>
-        Last updated <span data-time="" id="update">loading…</span>
-        <span id="calls-status" role="status" aria-live="polite"></span>
+
+      <div class="search-bar" id="search-bar">
+        <label class="search-field" for="filter">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9.5 3a6.5 6.5 0 1 0 3.98 11.64L19.85 21 21 19.85l-6.36-6.37A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"/>
+          </svg>
+          <input type="search" id="filter" placeholder="Search location or call type" autocomplete="off">
+        </label>
       </div>
-      <main id="listing">
+    </div>
 
+    <section class="status-panel loading" id="status-panel" aria-label="Calls feed status">
+      <div class="feed-summary">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div>
+          <span class="status-label">Live incident feed</span>
+          <p class="update-line">Last updated <span data-time="" id="update">loading…</span></p>
+        </div>
+      </div>
+      <div class="status-meta">
+        <span id="calls-status" role="status" aria-live="polite">Connecting</span>
+        <span id="event-count">Fetching calls</span>
+      </div>
+    </section>
 
-      </main>
+    <main id="listing" aria-live="polite">
+      <div class="loading-state" aria-hidden="true">
+        <div class="loading-content">
+          <p>Loading active calls…</p>
+          <div class="loading-bar"></div>
+          <div class="loading-bar"></div>
+          <div class="loading-bar"></div>
+        </div>
+      </div>
+    </main>
+  </div>
       <!-- Add the script to register the service worker -->
       <script>
   // ==UserScript==
@@ -429,8 +1184,12 @@ if (status == google.maps.GeocoderStatus.OK) {
       this.listingElement = document.getElementById('listing');
       this.updateElement = document.getElementById('update');
       this.statusElement = document.getElementById('calls-status');
+      this.statusPanel = document.getElementById('status-panel');
+      this.eventCountElement = document.getElementById('event-count');
       this.filterElement = document.getElementById('filter');
-      this.addRefreshButton();
+      this.searchBar = document.getElementById('search-bar');
+      this.isRefreshing = false;
+      this.addSearchToggleButton();
       this.addTable();
     }
     getRequestUrl() {
@@ -439,23 +1198,55 @@ if (status == google.maps.GeocoderStatus.OK) {
       sourceUrl.searchParams.set('_', Date.now().toString());
       return this.proxyUrl + encodeURIComponent(sourceUrl.toString());
     }
-    addRefreshButton() {
-      this.refreshButton = document.createElement('button');
-      this.refreshButton.innerHTML = '🔃';
-      this.refreshButton.addEventListener('click', this.refresh.bind(this));
-      this.buttonsElement.appendChild(this.refreshButton);
+    addSearchToggleButton() {
+      this.searchToggleButton = document.createElement('button');
+      this.searchToggleButton.className = 'icon-button';
+      this.searchToggleButton.type = 'button';
+      this.searchToggleButton.title = 'Search calls';
+      this.searchToggleButton.setAttribute('aria-label', 'Search calls');
+      this.searchToggleButton.setAttribute('aria-expanded', 'false');
+      this.searchToggleButton.setAttribute('aria-controls', 'search-bar');
+      this.searchToggleButton.innerHTML = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9.5 3a6.5 6.5 0 1 0 3.98 11.64L19.85 21 21 19.85l-6.36-6.37A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"/>
+        </svg>`;
+      this.searchToggleButton.addEventListener('click', this.toggleSearch.bind(this));
+      this.buttonsElement.appendChild(this.searchToggleButton);
+    }
+    toggleSearch() {
+      const isOpen = this.searchBar.classList.toggle('open');
+      this.searchToggleButton.setAttribute('aria-expanded', String(isOpen));
+      if (isOpen) {
+        this.filterElement.focus();
+      } else {
+        this.filterElement.blur();
+      }
     }
     refresh() {
-      this.table = document.querySelector('table');
-      if (this.table) {
-        this.table.remove();
-      }
-      this.addTable();
+      return this.addTable();
     }
     async addTable() {
-      this.refreshButton.disabled = true;
+      if (this.isRefreshing) {
+        return;
+      }
+      this.isRefreshing = true;
+      const hasExistingTable = Boolean(this.table);
+      this.statusPanel.classList.add('loading');
+      this.statusPanel.classList.remove('error');
       this.statusElement.classList.remove('error');
-      this.statusElement.textContent = '';
+      this.statusElement.textContent = 'Updating';
+      if (!hasExistingTable) {
+        this.eventCountElement.textContent = 'Fetching calls';
+        this.listingElement.innerHTML = `
+          <div class="loading-state" aria-hidden="true">
+            <div class="loading-content">
+              <p>Loading active calls…</p>
+              <div class="loading-bar"></div>
+              <div class="loading-bar"></div>
+              <div class="loading-bar"></div>
+            </div>
+          </div>`;
+      }
 
       try {
         const json = await fetchJson(this.getRequestUrl());
@@ -467,17 +1258,40 @@ if (status == google.maps.GeocoderStatus.OK) {
         this.updateElement.innerHTML = prettyTime(this.events.LastUpdated);
         this.updateElement.dataset.time = this.events.LastUpdated;
         this.table = this.buildTable(this.events);
-        this.listingElement.appendChild(this.table);
-        this.tableFilter = new TableFilter(this.table);
+        this.listingElement.replaceChildren(this.table);
+        this.statusPanel.classList.remove('loading');
+        this.statusElement.textContent = 'Live';
+        if (this.tableFilter) {
+          this.tableFilter.setTable(this.table);
+        } else {
+          this.tableFilter = new TableFilter(this.table);
+        }
         this.tableFilter.runFilter();
       } catch (error) {
         console.error('Unable to load calls for service:', error);
-        this.updateElement.textContent = 'unavailable';
-        this.updateElement.removeAttribute('data-time');
+        this.statusPanel.classList.remove('loading');
+        this.statusPanel.classList.add('error');
         this.statusElement.classList.add('error');
-        this.statusElement.textContent = error.message;
+        this.statusElement.textContent = 'Connection issue';
+
+        if (!hasExistingTable) {
+          this.updateElement.textContent = 'unavailable';
+          this.updateElement.removeAttribute('data-time');
+          this.eventCountElement.textContent = 'No data';
+
+          const errorState = document.createElement('div');
+          errorState.className = 'error-state';
+          const errorMessage = document.createElement('div');
+          const errorTitle = document.createElement('strong');
+          const errorDetail = document.createElement('span');
+          errorTitle.textContent = 'Unable to load calls';
+          errorDetail.textContent = error.message;
+          errorMessage.append(errorTitle, errorDetail);
+          errorState.appendChild(errorMessage);
+          this.listingElement.replaceChildren(errorState);
+        }
       } finally {
-        this.refreshButton.disabled = false;
+        this.isRefreshing = false;
       }
     }
     
@@ -514,8 +1328,9 @@ if (status == google.maps.GeocoderStatus.OK) {
 
     // create a row for each event object
     
-    for (const event of jsonData.Events) {
+    for (const [eventIndex, event] of jsonData.Events.entries()) {
       const row = document.createElement('tr');
+      row.style.setProperty('--row-index', jsonData.Events.length - eventIndex);
 
       var cachedEvent = localStorage.getItem(event.EventNumber);
       if(cachedEvent){
@@ -553,15 +1368,24 @@ if (status == google.maps.GeocoderStatus.OK) {
       // create a cell for each property of the event object
       for (const key of headers) {
         const cell = document.createElement('td');
+        cell.dataset.label = key;
       if(key == "Address"){
-        let address = event[key] + ",<br/>" + event["Community"];
-
-        let eventNumber = event["EventNumber"];
-        cell.innerHTML = `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}" target="_blank">${address}</a>`;
-        //make a details element that has a map in it
-      //  cell.innerHTML += `<details><summary>${address}</summary><iframe width="100%" height="300" src="https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed"></iframe>${eventNumber}</details>`;
+        const address = `${event[key]}, ${event["Community"]}`;
+        const addressLink = document.createElement('a');
+        const addressLine = document.createElement('span');
+        const communityLine = document.createElement('span');
+        addressLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+        addressLink.target = '_blank';
+        addressLink.rel = 'noopener noreferrer';
+        addressLine.className = 'address-primary';
+        communityLine.className = 'community';
+        addressLine.textContent = event[key];
+        communityLine.textContent = event["Community"];
+        addressLink.append(addressLine, communityLine);
+        cell.appendChild(addressLink);
       } else if(key == "DateTime"){
           cell.textContent = prettyTime(event[key]);
+          cell.title = event[key];
         } else {
             cell.textContent = event[key];
         }
@@ -573,21 +1397,48 @@ if (status == google.maps.GeocoderStatus.OK) {
       }
 
       row.addEventListener("click", (e) => {
-
-        console.log(e);
+        if (e.target.closest('a')) {
+          return;
+        }
         if(row.classList.contains("mapopen")){
           row.classList.remove("mapopen");
-          row.nextElementSibling.remove();
+          row.setAttribute('aria-expanded', 'false');
+          const mapRow = row.nextElementSibling;
+          if (mapRow && mapRow.classList.contains('map')) {
+            const slide = mapRow.querySelector('.map-slide');
+            mapRow.classList.remove('open');
+            const removeWhenCollapsed = (evt) => {
+              if (evt.target !== slide || evt.propertyName !== 'height') {
+                return;
+              }
+              slide.removeEventListener('transitionend', removeWhenCollapsed);
+              mapRow.remove();
+            };
+            slide.addEventListener('transitionend', removeWhenCollapsed);
+          }
         } else {
           const mapRow = document.createElement("tr");
           mapRow.classList.add("map");
           const mapCell = document.createElement("td");
           mapCell.colSpan = document.querySelectorAll("th").length;
-          mapCell.innerHTML = `<iframe width="100%" height="300" src="https://maps.google.com/maps?q=${encodeURIComponent(event["Address"] + ", " + event["Community"])}&t=h&output=embed&z=16"></iframe>`;
+          const mapSlide = document.createElement('div');
+          mapSlide.className = 'map-slide';
+          const mapFrame = document.createElement('iframe');
+          mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(event["Address"] + ", " + event["Community"])}&t=h&output=embed&z=16`;
+          mapFrame.title = `Map near ${event["Address"]}`;
+          mapFrame.loading = 'lazy';
+          mapSlide.appendChild(mapFrame);
+          mapCell.appendChild(mapSlide);
           mapRow.appendChild(mapCell);
 
           insertAfter(row, mapRow);
           row.classList.add("mapopen");
+          row.setAttribute('aria-expanded', 'true');
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              mapRow.classList.add('open');
+            });
+          });
         }
       });
 
@@ -599,17 +1450,27 @@ if (status == google.maps.GeocoderStatus.OK) {
   }
   }
   function prettyTime(datestring){
-    const diff = new Date(datestring) - new Date();
-    const seconds = diff / 1000; // -1937124.765
-    const minutes = seconds / 60; // -5158.739066666666
-    const hours = minutes / 60; // -85.97898444444444
+    const normalizedDate = String(datestring).replace(
+      /^(\d{2})-(\d{2})-(\d{4})/,
+      '$1/$2/$3'
+    );
+    const diff = new Date(normalizedDate) - new Date();
+    const minutes = Math.round(diff / 60000);
 
     const formatter = new Intl.RelativeTimeFormat('en-US', {
         numeric: 'auto',
     });
-    console.log(datestring);
 
-    return formatter.format(Math.round(minutes), 'minute');
+    if (Math.abs(minutes) < 60) {
+      return formatter.format(minutes, 'minute');
+    }
+
+    const hours = Math.round(minutes / 60);
+    if (Math.abs(hours) < 24) {
+      return formatter.format(hours, 'hour');
+    }
+
+    return formatter.format(Math.round(hours / 24), 'day');
   }
   async function fetchJson(url) {
     const response = await fetch(url, {
@@ -644,37 +1505,59 @@ if (status == google.maps.GeocoderStatus.OK) {
 
   class TableFilter {
     constructor(table){
-      console.log("table filter");
-      this.table = table;
       this.filterInput = document.querySelector("input#filter");
+      this.eventCountElement = document.querySelector("#event-count");
+      this.setTable(table);
       this.filterInput.addEventListener("change", this.runFilter.bind(this));
       this.filterInput.addEventListener("input", this.runFilter.bind(this));
 
     }
+    setTable(table) {
+      this.table = table;
+    }
     runFilter() {
       const filter = this.filterInput.value;
-      const rows = this.table.querySelectorAll("tbody tr");
-      console.log("filtering", filter);
+      const rows = this.table.querySelectorAll("tbody tr:not(.map)");
+      let visibleCount = 0;
       for(const row of rows){
-        if(row.textContent.toLowerCase().includes(filter.toLowerCase())){
+        const matches = row.textContent.toLowerCase().includes(filter.toLowerCase());
+        const mapRow = row.nextElementSibling?.classList.contains('map')
+          ? row.nextElementSibling
+          : null;
+        if(matches){
           row.classList.remove("hidden");
+          mapRow?.classList.remove('hidden');
+          visibleCount += 1;
         } else {
           row.classList.add("hidden");
-
+          mapRow?.classList.add('hidden');
         }
       }
+      this.eventCountElement.textContent = filter
+        ? `${visibleCount} of ${rows.length} calls`
+        : `${rows.length} call${rows.length === 1 ? '' : 's'}`;
     }
   }
 
   setInterval(() => {
     console.log("updating");
     var updateElement = document.getElementById("update");
-    var relativeTime = prettyTime(updateElement.dataset.time);
+    if (updateElement.dataset.time) {
+      updateElement.textContent = prettyTime(updateElement.dataset.time);
+    }
 
   }, 60000);
   document.addEventListener('DOMContentLoaded', () => {
     const callsForService = new CallsForService();
 
+    let lastScrollY = window.scrollY;
+    window.addEventListener('scroll', () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY === 0 && lastScrollY > 0) {
+        callsForService.refresh();
+      }
+      lastScrollY = currentScrollY;
+    }, { passive: true });
   });
   </script>
   <script>
