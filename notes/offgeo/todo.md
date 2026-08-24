@@ -81,7 +81,7 @@ Output: [`notes/offgeo/tooling-decision.md`](./tooling-decision.md) (toolchain d
 - [x] Browser capability/support matrix (`notes/offgeo/browser-capability-matrix.md`)
 - [x] Selected module/test setup (`notes/offgeo/tooling-decision.md`)
 - [x] Content-addressed source retention (`build/offgeo-sources/`) + build-host **disk** budget *(RAM budget deferred to R1 — nothing parses the data yet)*
-- [ ] Attribution and derived-product notice draft *(raw attribution strings captured per-source in the lock file; not yet drafted into pack-manifest/UI copy)*
+- [x] Attribution and derived-product notice draft (`notes/offgeo/attribution-notice-draft.md`)
 
 ## R0 exit gate — do not start R1 until all of these hold
 
@@ -90,7 +90,7 @@ Output: [`notes/offgeo/tooling-decision.md`](./tooling-decision.md) (toolchain d
 - [x] Address points join to road segments at an approved rate; gaps/ambiguous joins are counted. *(Counted: 66.2% joined, 33.8% zero-sentinel, 0.02% dangling/ambiguous. No numeric threshold has been formally "approved" yet — that's a `roadmap.md` §13 decision due at R1 exit, not R0 — but the count itself, which this bullet asks for, exists.)*
 - [ ] Census is shown to be a viable fallback/cross-check, not claimed as full coverage. *(Internal Census gaps are now measured — one-sided ranges ~13.9%, 107 non-digit house numbers — but the actual fallback/cross-check behavior only exists once merge logic is written in R1/R2.)*
 - [x] Every enabled source has a public download, provenance record, and stated purpose. *(All four currently-enabled sources — see `tools/offgeo/README.md`.)*
-- [ ] Source notices are ready to place in the pack manifest and UI. *(Attribution text captured in the lock file, not yet drafted as UI copy.)*
+- [x] Source notices are ready to place in the pack manifest and UI. *(`notes/offgeo/attribution-notice-draft.md` — full `notices/<version>.txt` draft and offline-data-card UI copy, both copied verbatim from `sources.lock.json`, quoting the exact `spec.md`/`roadmap.md` language requirements they satisfy. Content is copy-ready; the actual file and UI component don't exist until R2/R5.)*
 - [x] The fixture corpus covers ≥95% of address syntax categories seen in a sampled calls payload; the rest are counted and documented. *(100% of the current 50-address sample classified into a real category, zero fell to the malformed catch-all; categories absent from the payload — hundred-block, malformed, non-address text, etc. — are explicitly listed as not-yet-observed rather than silently omitted. Corpus is still small and rolling — see Group 3.)*
 - [x] The existing geocoder/location storage leaks have a precise removal/migration test plan. *(`notes/offgeo/legacy-storage-migration-test-plan.md` — literal seed fixtures traced from `main.js.old`'s exact write order, an assertion table, false-positive/idempotency/clean-profile/ordering test cases, and the harness recommendation. Plan only; `OFF-312`/`OFF-512`'s actual migration code is still unwritten, unchanged from prior scoping.)*
 - [x] Feed auth failure, pack failure, storage failure, and permission failure have distinct contracts. *(`notes/offgeo/feed-adapter-contract.md` §1 — six feed error categories, kept distinct from pack errors.)*
