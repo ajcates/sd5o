@@ -184,4 +184,21 @@ ADDRFEAT also has no field that's unique on its own — `TLID` legitimately repe
 - **110,003/183,865 rows (59.8%) join to a TLID present in the retained ADDRFEAT extract** — exact match against Group 2's earlier finding, now reproduced end-to-end through the real reader rather than ad hoc profiling code.
 - Peak RSS 411 MiB, 12.7s total (no coordinate transform needed).
 
-All four `OFF-101` thin source readers now exist and run cleanly against the real retained archives. Not yet built: `OFF-103`'s full range/join-quality profiling pass — the roads-to-address-points join by `ROADSEGID` and the SanGIS-to-Census name/geometry reconciliation both still need to be run end-to-end over these four readers' real output, not just each source's own internal counts (which is as far as this section goes).
+All four `OFF-101` thin source readers now exist and run cleanly against the real retained archives.
+
+## Phase R1, Group B — range and join-quality profiling (`OFF-103`, partial)
+
+```sh
+python3 tools/offgeo/profile-join-quality.py   # requires the roads + address-points readers' output first
+```
+
+`tools/offgeo/profile-join-quality.py` is the first `OFF-103` work: it runs against `compile-sangis-roads.py`/`compile-sangis-address-points.py`'s real JSONL output (not raw source bytes the way Group 2's `profile-sources.py` did), so it measures what a downstream compiler stage would actually see. Two passes: road range-side classification (absent/ascending/descending/malformed-one-bound-zero per side, plus an extreme-span flag), and address-point join quality (sentinel/joined/dangling by `ROADSEGID`, joined-by-road-confidence cross-tab, and a coarse numeric range-containment check for joined points).
+
+**Real run** (2026-08-24, against the roads/address-points output committed above):
+
+- **Roads (164,555 records):** 28.1% both-sides-absent (no address range at all) — matches Group 2's raw-source figure of 28.3% closely (small difference expected: Group 2 profiled all 164,555 raw rows directly, this profiles the reader's parsed output, same population, different code path). 5 left-side and 5 right-side rows are malformed (`one_bound_zero`: exactly one of low/high present, not both) — a new finding, not previously counted. Exactly **1 descending range** (right side) — an exact match against Group 2's "only one descending-range row" finding, reproduced independently through the real reader. At Group 2's own 100,000-unit "implausibly wide" threshold, this pass found **2** such rows, not Group 2's reported 1 — close but not an exact match; not investigated further here (small enough either way to be a data curiosity, not a systemic problem), flagged for whoever next touches range-repair logic.
+- **Address points (1,151,034 records) joined to the real roads output:** 35.9% unjoined (`ROADSEGID=0` sentinel, expected — condo/unit sub-records), **64.1% joined**, and only **40 dangling** (0.0035% — a `ROADSEGID` that doesn't resolve to any road in this reader's own output; Group 2's raw-source figure was 207/1,222,722 rows against the full unfiltered table, so this smaller number over the smaller coordinate-filtered population is consistent, not a new problem).
+- **New finding, not measurable before both readers existed:** of the 737,732 joined address points, 634,382 (86.0%) join to an `ORDINARY`-confidence road, 103,332 (14.0%) to `FALLBACK`, and only 18 to `EXCLUDED` — i.e. address points overwhelmingly attach to roads this project's own status classification already trusts, a good sign for `road_status.py`'s conservative fallback-not-excluded design.
+- **New finding — range containment:** among joined address points with a usable (non-all-zero) range on their road, **98.3% (725,382) have a house number that falls within the road's own combined low/high bounds**; 12,103 (1.6%) fall outside; 247 joined points had no usable range to check against at all. This is a coarse min/max check, not real side/parity-aware interpolation (that's R4's job) — the 12,103 outside-range points are a real, now-measured population worth carrying into R2's range-repair design, not proof any individual one is a data error (SanGIS ranges are revised over time and a point can predate a range edit).
+
+Not yet built: the SanGIS-to-Census name/geometry reconciliation half of `OFF-004`/`OFF-103` (still blocked on the shared normalization pipeline being run as an actual matcher, not just existing as a library), and the community-mapping/locality-ZIP-gap counts `OFF-103`'s full scope also asks for.
