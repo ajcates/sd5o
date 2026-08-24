@@ -1,6 +1,6 @@
 # OffGeo Phase R1 TODO — Feasibility Compiler and Benchmark
 
-Status: Early — Group A (`OFF-101`, `OFF-102`) is done; Group B (`OFF-103`) is essentially done except one deliberately-deferred piece. Everything else (`OFF-104`–`OFF-116`) is not started.
+Status: Early — Group A (`OFF-101`, `OFF-102`) is done; Group B (`OFF-103`) is essentially done except one deliberately-deferred piece; `OFF-112` (Group C) is also done. Everything else (`OFF-104`–`OFF-111`, `OFF-113`–`OFF-116`) is not started.
 Last updated: 2026-08-24
 Scope: [roadmap.md §5](./roadmap.md#5-phase-r1--feasibility-compiler-and-benchmark) (`OFF-101`–`OFF-116`).
 Reference: [spec.md](./spec.md) for merge rules and quality-gate language cited below; [`tools/offgeo/README.md`](../../tools/offgeo/README.md) for implementation detail, real numbers, and run commands — this file tracks status and links out, it doesn't duplicate the numbers.
@@ -25,7 +25,15 @@ Output: `tools/offgeo/compile-sangis-roads.py`, `compile-sangis-address-points.p
 
 Output: `tools/offgeo/profile-join-quality.py`, `tools/offgeo/reconcile-sangis-census-streets.py`. Real numbers and both normalization-bug writeups in `tools/offgeo/README.md`.
 
-## Not started — `OFF-104` through `OFF-116`
+## Group C — Community disambiguation — done 2026-08-24
+
+- [x] **OFF-112 — Prototype community disambiguation.** `tools/offgeo/prototype-community-disambiguation.py`: county-wide street-key ambiguity (2,689/32,667 keys, 8.2%, span 2+ SanGIS communities) measured before any community scoping, then re-measured per real feed `Community` value from the R0 `OFF-009` crosswalk fixture. Real run: 86.0% of real captured calls-feed events resolve cleanly through the crosswalk; the same 4 communities `OFF-009` already flagged as unmapped get zero disambiguation benefit; and a genuinely new finding — among resolved communities, many still-ambiguous keys are a close split across communities, not a stray mis-tagged point, so community scoping alone won't cleanly resolve most of this county's name ambiguity.
+
+Output: `tools/offgeo/prototype-community-disambiguation.py`. Real numbers in `tools/offgeo/README.md`'s "community disambiguation" section.
+
+## Not started — `OFF-104`–`OFF-111`, `OFF-113`–`OFF-116`
+
+(`OFF-112` moved to Group C above, done.)
 
 None of the remaining R1 work items have been started. Listed here (not duplicated from roadmap.md) so this file stays the single place to check R1 status without re-reading the full roadmap:
 
@@ -37,7 +45,6 @@ None of the remaining R1 work items have been started. Listed here (not duplicat
 - [ ] **OFF-109 — Decide format/runtime tools.**
 - [ ] **OFF-110 — Review feasibility thresholds.**
 - [ ] **OFF-111 — Benchmark integrity paths.**
-- [ ] **OFF-112 — Prototype community disambiguation.** Note R0 Group 3's feed-community crosswalk (`tests/offgeo/fixtures/community-crosswalk.json`) is a related but distinct, smaller piece of work — it maps feed `Community` strings to SanGIS `COMMUNITY` values, not the duplicate-street-name-before/after-crosswalk measurement this item asks for.
 - [ ] **OFF-113 — Prototype intersection topology.**
 - [ ] **OFF-114 — Spike IndexedDB failure modes.**
 - [ ] **OFF-115 — Test the static host contract.**
@@ -49,8 +56,7 @@ Not evaluated yet — every bullet in the roadmap's own R1 exit-gate list depend
 
 ## Suggested execution order
 
-1. `OFF-112` (community disambiguation) can reuse Group A/B's readers directly and is comparatively cheap — a reasonable next step before committing to a pack format.
-2. `OFF-104` (compact representation prototyping) is the biggest open decision blocking most of the rest of R1 (`OFF-105`–`OFF-111` all depend on a candidate format existing).
-3. `OFF-106` (real-address coverage benchmark) needs a geocoder prototype, which needs `OFF-104`/`OFF-105` first (or at minimum a throwaway lookup structure — the map-prototype's `geocoder.js` is *not* that prototype, see the note above).
-4. `OFF-108`, `OFF-111`, `OFF-114`, `OFF-115` are host/device/browser feasibility spikes that don't depend on the format decision and could run in parallel with `OFF-104`.
-5. `OFF-113` (intersection topology) and `OFF-116` (location UX inputs) are lower-urgency and can trail the rest.
+1. `OFF-104` (compact representation prototyping) is the biggest open decision blocking most of the rest of R1 (`OFF-105`–`OFF-111` all depend on a candidate format existing).
+2. `OFF-106` (real-address coverage benchmark) needs a geocoder prototype, which needs `OFF-104`/`OFF-105` first (or at minimum a throwaway lookup structure — the map-prototype's `geocoder.js` is *not* that prototype, see the note above).
+3. `OFF-108`, `OFF-111`, `OFF-114`, `OFF-115` are host/device/browser feasibility spikes that don't depend on the format decision and could run in parallel with `OFF-104`.
+4. `OFF-113` (intersection topology) and `OFF-116` (location UX inputs) are lower-urgency and can trail the rest.
