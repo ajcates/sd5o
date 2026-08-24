@@ -46,23 +46,18 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import packformat  # noqa: E402
 from normalize import canonicalize_street_core_name  # noqa: E402
-from varint import read_svarint, read_uvarint, write_svarint, write_uvarint  # noqa: E402
 
 ROADS_PATH = REPO_ROOT / "build/offgeo-sources/r1-sangis-roads.jsonl"
 REPORT_PATH = REPO_ROOT / "build/offgeo-sources/r1-pack-format-comparison-report.json"
 CUSTOM_PATH = REPO_ROOT / "build/offgeo-sources/r1-pack-custom.bin"
 SQLITE_PATH = REPO_ROOT / "build/offgeo-sources/r1-pack.sqlite"
 
-COORD_SCALE = 1_000_000  # 6 decimal degrees, ~0.11 m at this latitude -- plenty for interpolation
-MAGIC = b"OGP0"  # OffGeo Prototype format 0 -- explicitly NOT "OFG1" (roadmap.md reserves that name for the actual R1 decision)
-FORMAT_VERSION = 0
-
-DIRECTION_CODES = [None, "N", "S", "E", "W", "NE", "NW", "SE", "SW"]
-DIRECTION_TO_CODE = {d: i for i, d in enumerate(DIRECTION_CODES)}
-
-CONFIDENCE_CODES = {"ORDINARY": 0, "FALLBACK": 1, "EXCLUDED": 2}
-CONFIDENCE_BY_CODE = {v: k for k, v in CONFIDENCE_CODES.items()}
+COORD_SCALE = packformat.COORD_SCALE
+MAGIC = packformat.MAGIC
+FORMAT_VERSION = packformat.FORMAT_VERSION
+CONFIDENCE_CODES = packformat.CONFIDENCE_CODES
 
 
 def iter_jsonl(path: Path):
@@ -106,92 +101,25 @@ def load_records() -> list[dict]:
 
 
 # --- Candidate A: custom binary block format --------------------------------
+# Codec lives in tools/offgeo/lib/packformat.py -- shared with
+# prototype-benchmark-reader.py (OFF-105), which reuses the identical,
+# already round-trip-verified encode/decode at block granularity instead
+# of a second hand-copied implementation that could drift from this one.
 
 
 def build_custom_format(records: list[dict]) -> tuple[bytes, dict]:
     t0 = time.time()
-
-    # One shared string pool for names, suffixes, and ZIPs -- all are
-    # small, highly-repeated vocabularies (suffix, ZIP) or a name column
-    # with heavy repetition across many segments of the same street.
-    strings: list[str] = sorted({r["name"] for r in records if r["name"]}
-                                 | {r["sfx"] for r in records if r["sfx"]}
-                                 | {r["leftZip"] for r in records if r["leftZip"]}
-                                 | {r["rightZip"] for r in records if r["rightZip"]})
-    string_index = {s: i for i, s in enumerate(strings)}
-
-    # Geometry dedup: identical (lat,lon) point sequences share one
-    # entry. Group 2/OFF-103 already found only 3 duplicate groups in
-    # the real data, so this saves little bytes-wise here, but spec.md
-    # 6.3 requires the de-dup step exist regardless of how much any one
-    # dataset happens to benefit from it today.
-    geometry_index: dict[tuple, int] = {}
-    geometry_table: list[list[tuple[int, int]]] = []
-    record_geometry_idx = []
-    for r in records:
-        scaled = tuple((round(lat * COORD_SCALE), round(lon * COORD_SCALE)) for lat, lon in r["points"])
-        idx = geometry_index.get(scaled)
-        if idx is None:
-            idx = len(geometry_table)
-            geometry_index[scaled] = idx
-            geometry_table.append(list(scaled))
-        record_geometry_idx.append(idx)
-
-    # Serialize strings.
-    strings_blob = bytearray()
-    strings_blob += write_uvarint(len(strings))
-    for s in strings:
-        encoded = s.encode("utf-8")
-        strings_blob += write_uvarint(len(encoded))
-        strings_blob += encoded
-
-    # Serialize geometry: each entry is num_points, then the first point
-    # as absolute signed-scaled coords, then each subsequent point as a
-    # zigzag-varint delta from the previous one (consecutive polyline
-    # vertices are typically tens of meters apart, so deltas are small).
-    geometry_blob = bytearray()
-    geometry_blob += write_uvarint(len(geometry_table))
-    for points in geometry_table:
-        geometry_blob += write_uvarint(len(points))
-        prev_lat, prev_lon = 0, 0
-        for lat, lon in points:
-            geometry_blob += write_svarint(lat - prev_lat)
-            geometry_blob += write_svarint(lon - prev_lon)
-            prev_lat, prev_lon = lat, lon
-
-    # Serialize records.
-    records_blob = bytearray()
-    records_blob += write_uvarint(len(records))
-    for r, geom_idx in zip(records, record_geometry_idx):
-        records_blob += write_uvarint(r["roadsegid"])
-        records_blob += write_uvarint(string_index[r["name"]] + 1 if r["name"] else 0)
-        records_blob.append(DIRECTION_TO_CODE[r["pdir"]])
-        records_blob.append(DIRECTION_TO_CODE[r["postd"]])
-        records_blob += write_uvarint(string_index[r["sfx"]] + 1 if r["sfx"] else 0)
-        records_blob += write_uvarint(r["lLow"])
-        records_blob += write_uvarint(r["lHigh"])
-        records_blob += write_uvarint(r["rLow"])
-        records_blob += write_uvarint(r["rHigh"])
-        flags = (1 if r["lMix"] else 0) | (2 if r["rMix"] else 0) | (CONFIDENCE_CODES[r["confidence"]] << 2)
-        records_blob.append(flags)
-        records_blob += write_uvarint(string_index[r["leftZip"]] + 1 if r["leftZip"] else 0)
-        records_blob += write_uvarint(string_index[r["rightZip"]] + 1 if r["rightZip"] else 0)
-        records_blob += write_uvarint(geom_idx)
-
-    header = MAGIC + struct.pack("<B", FORMAT_VERSION)
-    header += write_uvarint(len(strings_blob))
-    header += write_uvarint(len(geometry_blob))
-    header += write_uvarint(len(records_blob))
-
-    blob = bytes(header) + bytes(strings_blob) + bytes(geometry_blob) + bytes(records_blob)
-
+    blob = packformat.encode_records(records)
+    # Re-derive the same distinct-string/geometry counts packformat
+    # computed internally, for reporting only (it doesn't return them).
+    strings = {r["name"] for r in records if r["name"]} | {r["sfx"] for r in records if r["sfx"]} \
+        | {r["leftZip"] for r in records if r["leftZip"]} | {r["rightZip"] for r in records if r["rightZip"]}
+    geometries = {tuple((round(lat * COORD_SCALE), round(lon * COORD_SCALE)) for lat, lon in r["points"])
+                  for r in records}
     stats = {
         "distinctStrings": len(strings),
-        "distinctGeometries": len(geometry_table),
+        "distinctGeometries": len(geometries),
         "buildSeconds": round(time.time() - t0, 2),
-        "stringsBlobBytes": len(strings_blob),
-        "geometryBlobBytes": len(geometry_blob),
-        "recordsBlobBytes": len(records_blob),
     }
     return blob, stats
 
@@ -199,82 +127,7 @@ def build_custom_format(records: list[dict]) -> tuple[bytes, dict]:
 def decode_custom_format(blob: bytes) -> list[dict]:
     """Round-trip decode, both to prove correctness and to build the
     in-memory structure the lookup benchmark below queries."""
-    if blob[:4] != MAGIC:
-        raise ValueError("bad magic")
-    version = blob[4]
-    if version != FORMAT_VERSION:
-        raise ValueError(f"unsupported version {version}")
-    offset = 5
-    strings_len, offset = read_uvarint(blob, offset)
-    geometry_len, offset = read_uvarint(blob, offset)
-    records_len, offset = read_uvarint(blob, offset)
-
-    strings_start = offset
-    geometry_start = strings_start + strings_len
-    records_start = geometry_start + geometry_len
-
-    # Decode strings.
-    o = strings_start
-    n_strings, o = read_uvarint(blob, o)
-    strings = []
-    for _ in range(n_strings):
-        slen, o = read_uvarint(blob, o)
-        strings.append(blob[o : o + slen].decode("utf-8"))
-        o += slen
-    assert o == geometry_start
-
-    # Decode geometry.
-    o = geometry_start
-    n_geoms, o = read_uvarint(blob, o)
-    geometry_table = []
-    for _ in range(n_geoms):
-        n_points, o = read_uvarint(blob, o)
-        points = []
-        prev_lat = prev_lon = 0
-        for _ in range(n_points):
-            dlat, o = read_svarint(blob, o)
-            dlon, o = read_svarint(blob, o)
-            prev_lat += dlat
-            prev_lon += dlon
-            points.append((prev_lat / COORD_SCALE, prev_lon / COORD_SCALE))
-        geometry_table.append(points)
-    assert o == records_start
-
-    # Decode records.
-    o = records_start
-    n_records, o = read_uvarint(blob, o)
-    out = []
-    for _ in range(n_records):
-        roadsegid, o = read_uvarint(blob, o)
-        name_idx, o = read_uvarint(blob, o)
-        pdir_code = blob[o]; o += 1
-        postd_code = blob[o]; o += 1
-        sfx_idx, o = read_uvarint(blob, o)
-        l_low, o = read_uvarint(blob, o)
-        l_high, o = read_uvarint(blob, o)
-        r_low, o = read_uvarint(blob, o)
-        r_high, o = read_uvarint(blob, o)
-        flags = blob[o]; o += 1
-        left_zip_idx, o = read_uvarint(blob, o)
-        right_zip_idx, o = read_uvarint(blob, o)
-        geom_idx, o = read_uvarint(blob, o)
-        out.append(
-            {
-                "roadsegid": roadsegid,
-                "name": strings[name_idx - 1] if name_idx else "",
-                "pdir": DIRECTION_CODES[pdir_code],
-                "postd": DIRECTION_CODES[postd_code],
-                "sfx": strings[sfx_idx - 1] if sfx_idx else None,
-                "lLow": l_low, "lHigh": l_high, "rLow": r_low, "rHigh": r_high,
-                "lMix": bool(flags & 1), "rMix": bool(flags & 2),
-                "confidence": CONFIDENCE_BY_CODE[flags >> 2],
-                "leftZip": strings[left_zip_idx - 1] if left_zip_idx else None,
-                "rightZip": strings[right_zip_idx - 1] if right_zip_idx else None,
-                "points": geometry_table[geom_idx],
-            }
-        )
-    assert o == len(blob)
-    return out
+    return packformat.decode_records(blob)
 
 
 # --- Candidate B: SQLite -----------------------------------------------------
