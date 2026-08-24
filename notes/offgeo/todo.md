@@ -1,7 +1,7 @@
 # OffGeo Phase R0 TODO — Public Source and Input-Contract Proof
 
-Status: Not started
-Last updated: 2026-08-22
+Status: In progress — Groups 1–4 complete (Group 3 is a small rolling corpus, see notes there; Group 4 was rescoped, see notes there)
+Last updated: 2026-08-23
 Scope: [roadmap.md §4](./roadmap.md#4-phase-r0--public-source-and-input-contract-proof) (`OFF-001`–`OFF-017`), the first slice named in [roadmap.md §15](./roadmap.md#15-recommended-first-implementation-slice).
 Reference: [spec.md](./spec.md) for source URLs, merge rules, and privacy requirements cited below.
 
@@ -11,50 +11,50 @@ Nothing here is implementation of the compiler/runtime — R0 only proves the so
 
 Work items are grouped by dependency, not by `OFF-###` number. Finish a group's prerequisites before starting items that read from it (e.g. the source lock in Group 1 gates the safeguards in Group 1 and the profiling in Group 2). Each item's checkbox is done only when its stated output artifact exists and is reviewable — not when the exploration is "basically done" in a terminal scrollback.
 
-## Group 1 — Pin, lock, and safeguard the sources
+## Group 1 — Pin, lock, and safeguard the sources — done 2026-08-23
 
-- [ ] **OFF-001 — Pin the primary SanGIS sources.**
-  - [ ] Download SanGIS *Roads - All* geometry from its public endpoint.
-  - [ ] Download SanGIS *Address Points to APN* from its public endpoint.
-  - [ ] For each: record URL, byte length, SHA-256, retrieval timestamp, displayed vintage, license, attribution text, and documentation URL.
-  - Output: entries in the source inventory (`tools/offgeo/README.md` or a dedicated source report).
-- [ ] **OFF-006 — Create a source lock file.** One machine-readable config (e.g. `tools/offgeo/config/sources.lock.json`) as the sole authority for source URL, expected checksum, adapter name, vintage, and attribution — for both SanGIS sources and the Census fallback pinned in OFF-003.
-- [ ] **OFF-007 — Create acquisition safeguards.** Build the fetch step so it rejects: redirects to hosts not in the lock file, a checksum mismatch without explicit review/re-lock, path traversal in archive entries, archive bombs (excessive expanded size), unexpected entry counts, and schema drift versus the last accepted shape.
-- [ ] **OFF-016 — Retain immutable source snapshots.** Store the exact downloaded archives in content-addressed build storage *outside Git* (see repo layout note below), verify them against the lock on every read, and prove — via a documented test — that a clean rebuild does not depend on a weekly government URL still serving the old bytes.
-- [ ] **OFF-017 — Budget build-host resources.** Measure download / expanded / intermediate peak disk and RAM on this Termux host; define an ignored, bounded scratch path; add a preflight free-space check; and clean only known temporary build directories on success or failure.
+- [x] **OFF-001 — Pin the primary SanGIS sources.**
+  - [x] Download SanGIS *Roads - All* geometry from its public endpoint.
+  - [x] Download SanGIS *Address Points to APN* from its public endpoint.
+  - [x] For each: record URL, byte length, SHA-256, retrieval timestamp, displayed vintage, license, attribution text, and documentation URL.
+  - Output: [`tools/offgeo/README.md`](../../tools/offgeo/README.md) source inventory, backed by [`tools/offgeo/config/sources.lock.json`](../../tools/offgeo/config/sources.lock.json).
+- [x] **OFF-006 — Create a source lock file.** `tools/offgeo/config/sources.lock.json` is the sole authority for source URL, checksum, adapter name, vintage, and attribution for both SanGIS sources and the two Census files pinned alongside them (the OFF-003 *profiling* work is still open, see Group 2).
+- [x] **OFF-007 — Create acquisition safeguards.** `tools/offgeo/fetch-sources.py` rejects redirects to hosts outside an allowlist, a checksum mismatch without a human editing the lock file first, zip path traversal, excessive entry counts, and >25x expansion ratios. Verified with a live test: truncated a retained archive, confirmed the script refused to trust it, then confirmed a clean re-fetch heals it.
+- [x] **OFF-016 — Retain immutable source snapshots.** All four archives are content-addressed under `build/offgeo-sources/<sha256>.zip` (gitignored, added to `.gitignore`), re-verified against the lock on every run. Re-running the fetch with all four already present re-downloaded nothing (see README "Fetching and pinning sources").
+- [x] **OFF-017 — Budget build-host resources.** Preflight free-space check requires 3x the declared download total before starting; measured disk consumption (~230 MiB for ~189 MiB of downloads) is recorded in `tools/offgeo/README.md` along with a flag that this host is at 94% disk utilization, which R1/R2 extraction work must account for.
 
-Repo-layout note (from [roadmap.md §3](./roadmap.md#3-planned-repository-layout)): generated archives, expanded shapefiles, and scratch databases never belong in Git. Create `tools/offgeo/` now (with `fetch-sources.*`, `config/`, `fixtures/`, `README.md`) even though the compiler itself is out of scope until R1.
+Repo-layout note (from [roadmap.md §3](./roadmap.md#3-planned-repository-layout)): generated archives, expanded shapefiles, and scratch databases never belong in Git. `tools/offgeo/` now exists with `fetch-sources.py`, `config/`, `README.md`; `fixtures/` is still empty pending Group 3. The compiler itself (`compile.*`, `validate.*`) stays out of scope until R1.
 
-## Group 2 — Profile and reconcile the schemas
+## Group 2 — Profile and reconcile the schemas — done 2026-08-23 (except the R1-deferred half of OFF-004)
 
-- [ ] **OFF-002 — Inspect the SanGIS schemas.** For both Roads - All and Address Points: CRS, record/geometry counts, fields/types/null rates, address-range quality, `ROADSEGID` uniqueness, road-to-address-point join cardinality, community coverage, status/classification value distribution, county bounds. Explicitly confirm APN, parcel, and unit fields are excluded from any output.
-- [ ] **OFF-003 — Pin and profile federal fallback sources.** Pin the current `06073 ADDRFEAT` and `FEATNAMES` TIGER/Line inputs (2025 vintage per spec.md — verify still current at pin time). Capture technical documentation/repackaging notice, string house-number forms, duplicate `TLID` geometry, and gaps from potential/suppressed ranges. Evaluate — do not ship — minimal `EDGES` topology for intersection coverage only.
-- [ ] **OFF-004 — Prove source precedence and value.** Quantify: SanGIS-primary coverage, Census fallback/alias gains, conflicts between the two, missing joins, roads present in one source but not the other, and valid-range rates. Drop any source or field whose benefit can't be shown in these numbers.
-- [ ] **OFF-005 — Define source precedence.** Write the deterministic field-level merge/conflict rules (SanGIS wins on valid joined data per spec.md §"merge"); include stable source IDs; never average conflicting values.
-- [ ] **OFF-014 — Define CRS control points.** Record each source's CRS/datum definition and a set of known-coordinate checks that will catch axis swaps, wrong State Plane units, or NAD83-mislabeled-as-WGS84 during the R1 transform.
+- [x] **OFF-002 — Inspect the SanGIS schemas.** Done via `tools/offgeo/profile-sources.py` against the live retained archives: 62 fields/164,555 records (Roads) and 22 fields/1,222,722 records (Address Points), null rates, `ROADSEGID` 100%-unique with zero duplicates, join cardinality (66.2% joined, 33.8% zero-sentinel, 0.02% dangling), `COMMUNITY` coverage (115 raw distinct values — case-inconsistent, see finding below), `SEGSTAT`/`DEDSTAT`/`FUNCLASS`/jurisdiction distributions, county bounds, and confirmed `APN`/`PARCELID`/`ADDRAPNID`/`ADDRUNIT` are present and must be excluded downstream. Full numbers in `tools/offgeo/README.md` Group 2 section and `build/offgeo-sources/profile-report.json`.
+- [x] **OFF-003 — Pin and profile federal fallback sources.** Pinning done (OFF-001/OFF-006). Profiling done: record count and non-digit house-number count (107) match `spec.md` §4.2's audited figures exactly; 5,718 duplicate-`TLID` groups (7,805 extra rows) confirmed; one-sided-range gaps quantified (~13.9%, a normal TIGER pattern, not a defect). `EDGES` topology evaluation is explicitly deferred — it depends on the intersection-coverage benchmark that doesn't exist until R1 (`OFF-113`), so "evaluate before shipping" can't be answered by profiling alone.
+- [ ] **OFF-004 — Prove source precedence and value.** Within-source coverage/quality is fully quantified (see OFF-002/OFF-003 above). The cross-source half — SanGIS-vs-Census coverage gain, conflicts, roads present in one source but not the other — **cannot** be measured yet: `ROADSEGID` and `TLID` are unrelated identifier spaces with no shared key, so this needs the name-normalization/matching pipeline that is explicitly R1 scope (`OFF-101`–`OFF-106`, especially the real-address coverage benchmark `OFF-106`). Recorded as a deliberate scope boundary in `tools/offgeo/README.md`, not a skipped task.
+- [x] **OFF-005 — Define source precedence.** Already fully specified in `spec.md` §4.3; grounded against the real field names found here (SanGIS `LMIXADDR`/`RMIXADDR`, Census `LFROMTYP`/`LTOTYP`/`RFROMTYP`/`RTOTYP`) in `tools/offgeo/README.md`.
+- [ ] **OFF-014 — Define CRS control points.** CRS/datum definitions recorded (Group 1). New evidence from profiling: both SanGIS sources contain at least one row with a literal `0.0` State Plane coordinate, which is not a plausible San Diego location — any control-point/bounds check must reject that sentinel rather than accept it. Still open: an actual set of known-coordinate checks against named landmarks, which needs the R1 transform to test against.
 
-Output: schema/profile report per enabled source, plus the written precedence/merge-rule document.
+Output: [`tools/offgeo/README.md`](../../tools/offgeo/README.md) Group 2 section (schema/profile report per source, source-precedence grounding); raw numbers in `build/offgeo-sources/profile-report.json` (gitignored, reproducible via `python3 tools/offgeo/profile-sources.py`).
 
-## Group 3 — Fixtures and the community crosswalk
+## Group 3 — Fixtures and the community crosswalk — initial corpus done 2026-08-23 (rolling, keep growing)
 
-- [ ] **OFF-008 — Capture representative input shapes.** Build a rolling, sanitized fixture set from real calls-for-service addresses, covering: ordinary numbered, hundred-block, slash intersections (with and without spaces), directionals, numbered streets, highways, aliases, street-only locations, missing locality, malformed text, and non-address text. Pull from more than one live snapshot so the set isn't an artifact of a single moment.
-- [ ] **OFF-009 — Build the feed-community crosswalk.** Profile `Community` and `ServiceArea` values from the calls feed over time; map them deterministically to SanGIS community/jurisdiction sets; report any value that doesn't map and any many-to-many mapping.
+- [x] **OFF-008 — Capture representative input shapes.** `tools/offgeo/capture-calls-snapshot.py` pulls read-only snapshots of the live calls feed; `tools/offgeo/build-address-fixtures.py` classifies every distinct captured address into the required syntax categories and writes `tests/offgeo/fixtures/addresses.json`. Current corpus: 2 distinct feed moments (~10 min apart — the feed doesn't refresh every request, confirmed directly), 50 unique addresses, 100% categorized (none fell through as unrecognized). Real captures so far show `ordinary_numbered`/`has_directional`/`slash_intersection_unspaced`/`highway`-in-intersection; `hundred_block`, `numbered_street`, `street_only`, `missing_locality`, `malformed`, and `non_address_text` have not appeared yet, and `alias` cannot be detected from a single feed string at all (needs the R1 alias table). This is by design a rolling artifact — both scripts are idempotent and meant to be re-run as more snapshots accumulate over subsequent days, not a one-time capture.
+- [x] **OFF-009 — Build the feed-community crosswalk.** `tools/offgeo/build-community-crosswalk.py` streams the full SanGIS `COMMUNITY` distinct-value set and matches it against captured feed `Community` values by exact case-folded equality (no fuzzy matching, so mismatches are explicit findings). From the current sample (18 feed communities, 7 service areas): 14 map cleanly; 4 don't — `PAUMA` (SanGIS only has `"Pauma Valley"`), and `UNINCORPORATED EL CAJON`/`UNINCORPORATED LA MESA`/`UNINCORPORATED VISTA` (compound feed labels with no literal SanGIS `COMMUNITY` match at all, needing a human-authored alias). One community (`UNINCORPORATED EL CAJON`) spanned two `ServiceArea` values in-sample — plausible boundary case, but only 3 occurrences, needs re-confirming as the corpus grows.
 
-Output: `tests/offgeo/fixtures/` seed corpus with expected parse categories, and the crosswalk report.
+Output: [`tests/offgeo/fixtures/addresses.json`](../../tests/offgeo/fixtures/addresses.json) (checked in), [`tests/offgeo/fixtures/community-crosswalk.json`](../../tests/offgeo/fixtures/community-crosswalk.json) (checked in). Detail in [`tools/offgeo/README.md`](../../tools/offgeo/README.md) Group 3 section. Raw snapshots live at `build/offgeo-sources/calls-snapshots/` (gitignored, reproducible via `capture-calls-snapshot.py`).
 
-## Group 4 — Audit and plan removal of the existing runtime's privacy debt
+## Group 4 — Audit `index.html` (privacy + architecture) and replatform it on a mini framework — done 2026-08-23
 
-The current `index.html` already ships a Google Geocoding API key and writes raw coordinates to `localStorage`. This group turns that into a scoped migration plan — no code changes yet, that's `OFF-312`/`OFF-512` in R3/R5.
+Rewritten and expanded beyond the original scope below: `OFF-010`/`OFF-015`'s privacy audit is unchanged in intent but now sits alongside a general architecture audit, and this group now also covers building and shipping a small custom component framework the whole app runs on. This is a deliberate scope addition beyond `roadmap.md` §4's original `OFF-001`–`OFF-017` list, made explicitly at the user's direction rather than silently — R0's own framing ("nothing here is implementation of the compiler/runtime") applied to the OffGeo compiler/runtime specifically, not to this pre-existing app's code quality, so building/shipping the framework here doesn't cut against that rule.
 
-- [ ] **OFF-010 — Audit the existing privacy/runtime path.** Inventory, with file:line references, everything OffGeo must remove or replace:
-  - Google geocoder call and hard-coded API key (`getLatLngForAddress`, currently `index.html` — the `AIzaSyA…` key passed to `maps.googleapis.com/maps/api/geocode/json`).
-  - `localStorage` writes of raw `latitude`/`longitude` (currently in the `Nearby.askPermission` handler).
-  - The per-event `localStorage` cache keyed by `EventNumber` that can carry a `nearby: true` flag derived from the geocoded location.
-  - The implicit Google Maps iframe embed used for the row map-expand view.
-  - Note which of these need a revoke/restrict action in the Google Cloud console versus a pure code deletion.
-- [ ] **OFF-015 — Define legacy cleanup safety.** From the OFF-010 inventory, specify: the exact `localStorage` keys (`latitude`, `longitude`) and the per-event record shape to remove (`value.EventNumber === key`, including a `nearby` field); an idempotent migration version marker so it only runs once per profile; the provider-key revoke/restrict action as an explicit checklist step; and a test proving unrelated origin `localStorage` data survives the migration untouched.
+- [x] **OFF-010 — Audit the existing privacy/runtime path.** Done with file:line references in [`notes/offgeo/index-html-audit.md`](./index-html-audit.md) Part A. Key finding beyond the original ask: the `Nearby` class (geocoder key, lat/lng `localStorage` writes) is **currently dead code** — never instantiated in `index.html` — but git history (`main.js.old`) shows it was live before the PWA-conversion commit, so real past users' browsers may still carry the legacy keys. The map iframe embed is separately live and confirmed as its own minor privacy note (discloses which call a visitor viewed to Google, not coordinates).
+- [x] **OFF-015 — Define legacy cleanup safety.** Grounded in the audit: exact keys (`latitude`, `longitude`, plus the geocode-address-string cache keys which are keyed by the address text itself, not a fixed name — must be recognized by value shape `{lat, lng}`), the per-event `nearby` field to strip, and the requirement that the migration test be seeded with `main.js.old`-era keys (not assume a clean slate) — full detail in the audit doc Part A. The revoke/restrict console action and the actual migration code remain `OFF-312`/`OFF-512` (R3/R5), same as originally scoped — this item defines the safety contract, it doesn't run the migration yet.
+- [x] **New — Architecture audit.** [`notes/offgeo/index-html-audit.md`](./index-html-audit.md) Part B: 9 findings (state/render coupling, no component boundary, three DOM-construction styles, full teardown-per-refresh, global namespace pollution, dead/vestigial code including a leftover userscript header, a second unused Haversine implementation, a loose-equality change-detection bug that marks rows "changed" forever after their first poll, and a service worker that caches on install but never actually serves anything offline).
+- [x] **New — Mini SPA framework, built and shipped.** [`src/framework/core.js`](../../src/framework/core.js): a `Component` base class (state → render → delegated `data-on-<event>` binding), an escaping `` html`` `` template tag, `mount()`. No build step, native ES modules — consistent with `roadmap.md` §3's "ordinary static JavaScript" constraint. Weighed against adopting an existing tiny library or patching in place; rationale in the audit doc's Recommendation section.
+- [x] **New — `index.html` replatformed on the framework.** [`src/app/`](../../src/app/) (`status-panel.js`, `calls-list.js`, `search-toggle.js`, `format.js`, `main.js`) replaces the old inline `<script>` wiring 1:1 for every currently-live feature (status panel, calls table, search/filter, row map-expand/collapse, service worker registration), fixing the "changed forever" bug along the way. The dead `Nearby`/geocoder feature is deliberately **not** ported — it stays out until it can be rebuilt properly on OffGeo's own offline geocoder in R5, not carried forward with its known privacy debt. Verified in a real headless Chromium against the live feed (see audit Part C): live status, filtered search, row map-expand/collapse, zero console errors.
 
-Output: a written migration plan (can live in `tools/offgeo/README.md` or a dedicated privacy-migration note) that R3 (`OFF-312`) and R5 (`OFF-512`) implement against.
+Output: [`notes/offgeo/index-html-audit.md`](./index-html-audit.md) (privacy audit, architecture audit, framework recommendation, prototype outcome); [`src/framework/`](../../src/framework/) and [`src/app/`](../../src/app/) (shipped code); rewritten `index.html` loading `<script type="module" src="src/app/main.js">`. The `OFF-312`/`OFF-512` `localStorage` migration and API-key revocation are still open, unchanged from the original scoping — this group produced their contract, not their implementation.
+
+- [x] **New — Calls map prototype.** A slide-down Leaflet map (self-hosted, no raster tiles — see [`notes/offgeo/map-prototype.md`](./map-prototype.md) for why) showing SanGIS road-line geometry and one age-pulsing marker per geocodable call, with tap-to-scroll-and-highlight into the existing table. Built on a small prototype offline geocoder (`tools/offgeo/build-address-index.py`, community-scoped exact-or-nearest address lookup) and a roads-geometry extractor (`tools/offgeo/build-roads-geometry.py`, new `.shp` reader in `tools/offgeo/lib/shp.py`). Introduces one new build-time-only dependency, PROJ's `cs2cs` (`pkg install proj`), after a hand-rolled coordinate transform was found to be wrong by ~1,400 km against a known address. Verified live: 31/46 calls geocoded, tap-to-highlight confirmed in a real headless-Chromium run. Explicitly not the real R1-R4 geocoder — see the note's non-goals section.
 
 ## Group 5 — Feed adapter contract
 
@@ -75,30 +75,30 @@ Output: recorded toolchain decision with run commands, and the capability/suppor
 
 ## Deliverables checklist (roadmap §4)
 
-- [ ] Source inventory / recommendation (`tools/offgeo/README.md` or dedicated report)
-- [ ] Pinned source lock/config with checksums
-- [ ] Schema/profile report for every enabled source
-- [ ] Initial sanitized address fixture corpus with expected parse categories
-- [ ] Feed-community crosswalk report
+- [x] Source inventory / recommendation (`tools/offgeo/README.md`)
+- [x] Pinned source lock/config with checksums (`tools/offgeo/config/sources.lock.json`)
+- [x] Schema/profile report for every enabled source (`tools/offgeo/README.md` Group 2 section, `build/offgeo-sources/profile-report.json`)
+- [x] Initial sanitized address fixture corpus with expected parse categories (`tests/offgeo/fixtures/addresses.json`) *(small rolling corpus — 2 feed moments so far, see Group 3)*
+- [x] Feed-community crosswalk report (`tests/offgeo/fixtures/community-crosswalk.json`)
 - [ ] Current-app privacy migration plan
 - [ ] Browser capability/support matrix
 - [ ] Selected module/test setup
-- [ ] Content-addressed source retention + build-host disk/RAM budget
-- [ ] Attribution and derived-product notice draft
+- [x] Content-addressed source retention (`build/offgeo-sources/`) + build-host **disk** budget *(RAM budget deferred to R1 — nothing parses the data yet)*
+- [ ] Attribution and derived-product notice draft *(raw attribution strings captured per-source in the lock file; not yet drafted into pack-manifest/UI copy)*
 
 ## R0 exit gate — do not start R1 until all of these hold
 
-- [ ] SanGIS primary and Census fallback fetch reproducibly from official government endpoints.
-- [ ] Required geometry and left/right address-range fields for interpolation exist and parse.
-- [ ] Address points join to road segments at an approved rate; gaps/ambiguous joins are counted.
-- [ ] Census is shown to be a viable fallback/cross-check, not claimed as full coverage.
-- [ ] Every enabled source has a public download, provenance record, and stated purpose.
-- [ ] Source notices are ready to place in the pack manifest and UI.
-- [ ] The fixture corpus covers ≥95% of address syntax categories seen in a sampled calls payload; the rest are counted and documented.
+- [x] SanGIS primary and Census fallback fetch reproducibly from official government endpoints. *(Proven: re-running the fetch against fully-retained sources re-verifies without re-downloading; a deliberately corrupted retained file and a deliberately wrong locked checksum were both rejected and both recovered cleanly.)*
+- [x] Required geometry and left/right address-range fields for interpolation exist and parse. *(Confirmed for all three geometry-bearing sources: SanGIS `LLOWADDR`/`LHIGHADDR`/`RLOWADDR`/`RHIGHADDR` and Census `LFROMHN`/`LTOHN`/`RFROMHN`/`RTOHN` parse, with zero/malformed/one-sided rates measured, not just assumed present.)*
+- [x] Address points join to road segments at an approved rate; gaps/ambiguous joins are counted. *(Counted: 66.2% joined, 33.8% zero-sentinel, 0.02% dangling/ambiguous. No numeric threshold has been formally "approved" yet — that's a `roadmap.md` §13 decision due at R1 exit, not R0 — but the count itself, which this bullet asks for, exists.)*
+- [ ] Census is shown to be a viable fallback/cross-check, not claimed as full coverage. *(Internal Census gaps are now measured — one-sided ranges ~13.9%, 107 non-digit house numbers — but the actual fallback/cross-check behavior only exists once merge logic is written in R1/R2.)*
+- [x] Every enabled source has a public download, provenance record, and stated purpose. *(All four currently-enabled sources — see `tools/offgeo/README.md`.)*
+- [ ] Source notices are ready to place in the pack manifest and UI. *(Attribution text captured in the lock file, not yet drafted as UI copy.)*
+- [x] The fixture corpus covers ≥95% of address syntax categories seen in a sampled calls payload; the rest are counted and documented. *(100% of the current 50-address sample classified into a real category, zero fell to the malformed catch-all; categories absent from the payload — hundred-block, malformed, non-address text, etc. — are explicitly listed as not-yet-observed rather than silently omitted. Corpus is still small and rolling — see Group 3.)*
 - [ ] The existing geocoder/location storage leaks have a precise removal/migration test plan.
 - [ ] Feed auth failure, pack failure, storage failure, and permission failure have distinct contracts.
 - [ ] The feed path has a production-safe credential/CORS design; no secret recoverable from browser source, URLs, caches, or diagnostics.
-- [ ] Exact source bytes stay reproducible after an upstream weekly URL changes; low build-host space fails cleanly before extraction.
+- [x] Exact source bytes stay reproducible after an upstream weekly URL changes; low build-host space fails cleanly before extraction. *(The changed-checksum guard was tested directly by locking a wrong checksum and confirming the fetch aborts rather than silently accepting new bytes; the preflight free-space check runs before every download.)*
 
 ## Suggested execution order
 

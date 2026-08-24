@@ -1,0 +1,265 @@
+{
+  "$schema": "OFF-009 feed-community crosswalk",
+  "generatedAt": "2026-08-23T04:22:34Z",
+  "snapshotFilesUsed": [
+    "20260823T040832Z.json",
+    "20260823T041751Z.json"
+  ],
+  "uniqueFeedEvents": 50,
+  "matchRule": "case-fold exact string equality between feed Community and SanGIS Address Points COMMUNITY",
+  "feedCommunityCount": 18,
+  "feedServiceAreaCount": 7,
+  "mappedCommunities": {
+    "ALPINE": {
+      "feedOccurrences": 3,
+      "sangisRecordCount": 7040,
+      "sangisRawVariants": [
+        {
+          "raw": "Alpine",
+          "recordCount": 5500
+        },
+        {
+          "raw": "ALPINE",
+          "recordCount": 1540
+        }
+      ]
+    },
+    "BONITA": {
+      "feedOccurrences": 1,
+      "sangisRecordCount": 6530,
+      "sangisRawVariants": [
+        {
+          "raw": "Bonita",
+          "recordCount": 5234
+        },
+        {
+          "raw": "BONITA",
+          "recordCount": 1296
+        }
+      ]
+    },
+    "ENCINITAS": {
+      "feedOccurrences": 8,
+      "sangisRecordCount": 20779,
+      "sangisRawVariants": [
+        {
+          "raw": "ENCINITAS",
+          "recordCount": 7896
+        },
+        {
+          "raw": "Encinitas",
+          "recordCount": 12883
+        }
+      ]
+    },
+    "FALLBROOK": {
+      "feedOccurrences": 1,
+      "sangisRecordCount": 21021,
+      "sangisRawVariants": [
+        {
+          "raw": "Fallbrook",
+          "recordCount": 16591
+        },
+        {
+          "raw": "FALLBROOK",
+          "recordCount": 4430
+        }
+      ]
+    },
+    "IMPERIAL BEACH": {
+      "feedOccurrences": 2,
+      "sangisRecordCount": 6130,
+      "sangisRawVariants": [
+        {
+          "raw": "IMPERIAL BEACH",
+          "recordCount": 1414
+        },
+        {
+          "raw": "Imperial Beach",
+          "recordCount": 4716
+        }
+      ]
+    },
+    "LAKESIDE": {
+      "feedOccurrences": 2,
+      "sangisRecordCount": 14523,
+      "sangisRawVariants": [
+        {
+          "raw": "Lakeside",
+          "recordCount": 12482
+        },
+        {
+          "raw": "LAKESIDE",
+          "recordCount": 2041
+        }
+      ]
+    },
+    "LEMON GROVE": {
+      "feedOccurrences": 3,
+      "sangisRecordCount": 7929,
+      "sangisRawVariants": [
+        {
+          "raw": "Lemon Grove",
+          "recordCount": 6665
+        },
+        {
+          "raw": "LEMON GROVE",
+          "recordCount": 1264
+        }
+      ]
+    },
+    "POWAY": {
+      "feedOccurrences": 3,
+      "sangisRecordCount": 17071,
+      "sangisRawVariants": [
+        {
+          "raw": "Poway",
+          "recordCount": 12889
+        },
+        {
+          "raw": "POWAY",
+          "recordCount": 4182
+        }
+      ]
+    },
+    "RAMONA": {
+      "feedOccurrences": 2,
+      "sangisRecordCount": 21556,
+      "sangisRawVariants": [
+        {
+          "raw": "Ramona",
+          "recordCount": 12589
+        },
+        {
+          "raw": "RAMONA",
+          "recordCount": 8967
+        }
+      ]
+    },
+    "RANCHO SANTA FE": {
+      "feedOccurrences": 1,
+      "sangisRecordCount": 6456,
+      "sangisRawVariants": [
+        {
+          "raw": "Rancho Santa Fe",
+          "recordCount": 5335
+        },
+        {
+          "raw": "RANCHO SANTA FE",
+          "recordCount": 1121
+        }
+      ]
+    },
+    "SAN MARCOS": {
+      "feedOccurrences": 4,
+      "sangisRecordCount": 45115,
+      "sangisRawVariants": [
+        {
+          "raw": "San Marcos",
+          "recordCount": 36145
+        },
+        {
+          "raw": "SAN MARCOS",
+          "recordCount": 8970
+        }
+      ]
+    },
+    "SANTEE": {
+      "feedOccurrences": 5,
+      "sangisRecordCount": 19267,
+      "sangisRawVariants": [
+        {
+          "raw": "Santee",
+          "recordCount": 14272
+        },
+        {
+          "raw": "SANTEE",
+          "recordCount": 4995
+        }
+      ]
+    },
+    "SPRING VALLEY": {
+      "feedOccurrences": 1,
+      "sangisRecordCount": 21011,
+      "sangisRawVariants": [
+        {
+          "raw": "Spring Valley",
+          "recordCount": 18401
+        },
+        {
+          "raw": "SPRING VALLEY",
+          "recordCount": 2610
+        }
+      ]
+    },
+    "VISTA": {
+      "feedOccurrences": 7,
+      "sangisRecordCount": 32397,
+      "sangisRawVariants": [
+        {
+          "raw": "Vista",
+          "recordCount": 20035
+        },
+        {
+          "raw": "VISTA",
+          "recordCount": 12362
+        }
+      ]
+    }
+  },
+  "unmappedCommunities": {
+    "PAUMA": {
+      "feedOccurrences": 1
+    },
+    "UNINCORPORATED EL CAJON": {
+      "feedOccurrences": 3
+    },
+    "UNINCORPORATED LA MESA": {
+      "feedOccurrences": 1
+    },
+    "UNINCORPORATED VISTA": {
+      "feedOccurrences": 2
+    }
+  },
+  "communitiesSpanningMultipleServiceAreas": {
+    "UNINCORPORATED EL CAJON": [
+      "RANCHO SAN DIEGO / LEMON GROVE",
+      "SANTEE / LAKESIDE / ALPINE"
+    ]
+  },
+  "serviceAreaToCommunities": {
+    "IMPERIAL BEACH": [
+      "BONITA",
+      "IMPERIAL BEACH"
+    ],
+    "NORTH COASTAL": [
+      "ENCINITAS",
+      "RANCHO SANTA FE"
+    ],
+    "POWAY / 4S RANCH / RAMONA": [
+      "POWAY",
+      "RAMONA"
+    ],
+    "RANCHO SAN DIEGO / LEMON GROVE": [
+      "LEMON GROVE",
+      "SPRING VALLEY",
+      "UNINCORPORATED EL CAJON",
+      "UNINCORPORATED LA MESA"
+    ],
+    "SAN MARCOS / VALLEY CENTER": [
+      "PAUMA",
+      "SAN MARCOS"
+    ],
+    "SANTEE / LAKESIDE / ALPINE": [
+      "ALPINE",
+      "LAKESIDE",
+      "SANTEE",
+      "UNINCORPORATED EL CAJON"
+    ],
+    "VISTA / FALLBROOK": [
+      "FALLBROOK",
+      "UNINCORPORATED VISTA",
+      "VISTA"
+    ]
+  }
+}

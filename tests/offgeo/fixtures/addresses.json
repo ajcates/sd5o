@@ -1,0 +1,520 @@
+{
+  "$schema": "OFF-008 sanitized address fixture corpus",
+  "source": "leag-caddata calls-for-service feed (public Address/Community/ServiceArea fields only)",
+  "snapshotCount": 2,
+  "uniqueEvents": 50,
+  "uniqueAddresses": 50,
+  "fixtures": [
+    {
+      "address": "100 N EL CAMINO REAL",
+      "categories": [
+        "ordinary_numbered",
+        "has_directional"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ENCINITAS"
+      ]
+    },
+    {
+      "address": "100 N EMERALD DR",
+      "categories": [
+        "ordinary_numbered",
+        "has_directional"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "VISTA"
+      ]
+    },
+    {
+      "address": "10300 LEILA LN",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SANTEE"
+      ]
+    },
+    {
+      "address": "10400 MAST BL",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SANTEE"
+      ]
+    },
+    {
+      "address": "1100 ALTURAS RD",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "FALLBROOK"
+      ]
+    },
+    {
+      "address": "1100 OAKCREST PARK DR",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ENCINITAS"
+      ]
+    },
+    {
+      "address": "1300 VIA TERRASSA",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ENCINITAS"
+      ]
+    },
+    {
+      "address": "13400 POWAY RD",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "POWAY"
+      ]
+    },
+    {
+      "address": "1400 MARSHALL RD",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ALPINE"
+      ]
+    },
+    {
+      "address": "1400 VIEJAS VIEW LN",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ALPINE"
+      ]
+    },
+    {
+      "address": "14200 VISTA HILLS DR",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "LAKESIDE"
+      ]
+    },
+    {
+      "address": "14800 POMERADO RD",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "POWAY"
+      ]
+    },
+    {
+      "address": "1500 FOOTHILL DR",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "VISTA"
+      ]
+    },
+    {
+      "address": "15400 OLDE HIGHWAY 80",
+      "categories": [
+        "ordinary_numbered",
+        "highway"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "UNINCORPORATED EL CAJON"
+      ]
+    },
+    {
+      "address": "1600 HILTON HEAD RD",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "UNINCORPORATED EL CAJON"
+      ]
+    },
+    {
+      "address": "1600 JONATHON ST",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "VISTA"
+      ]
+    },
+    {
+      "address": "1700 LAGUNA DR",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "VISTA"
+      ]
+    },
+    {
+      "address": "200 E BOBIER DR",
+      "categories": [
+        "ordinary_numbered",
+        "has_directional"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "VISTA"
+      ]
+    },
+    {
+      "address": "2000 ELEVADO RD",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "UNINCORPORATED VISTA"
+      ]
+    },
+    {
+      "address": "2100 WARMLANDS AV",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "UNINCORPORATED VISTA"
+      ]
+    },
+    {
+      "address": "2300 ALPINE BL",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ALPINE"
+      ]
+    },
+    {
+      "address": "2400 HOLLIDAY LN",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "LEMON GROVE"
+      ]
+    },
+    {
+      "address": "2500 WIND RIVER RD",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "UNINCORPORATED EL CAJON"
+      ]
+    },
+    {
+      "address": "300 MARCOS ST",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SAN MARCOS"
+      ]
+    },
+    {
+      "address": "300 N MELROSE DR",
+      "categories": [
+        "ordinary_numbered",
+        "has_directional"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "VISTA"
+      ]
+    },
+    {
+      "address": "300 SANTA FE DR",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ENCINITAS"
+      ]
+    },
+    {
+      "address": "3200 COLLEGE PL",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "LEMON GROVE"
+      ]
+    },
+    {
+      "address": "3400 EL RANCHO GRANDE",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "BONITA"
+      ]
+    },
+    {
+      "address": "3400 HOLLENCREST RD",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SAN MARCOS"
+      ]
+    },
+    {
+      "address": "400 ENCINITAS BL",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ENCINITAS"
+      ]
+    },
+    {
+      "address": "400 N MELROSE DR",
+      "categories": [
+        "ordinary_numbered",
+        "has_directional"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "VISTA"
+      ]
+    },
+    {
+      "address": "4600 AVOCADO BL",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "UNINCORPORATED LA MESA"
+      ]
+    },
+    {
+      "address": "500 FLORIDA ST",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "IMPERIAL BEACH"
+      ]
+    },
+    {
+      "address": "500 SPRUCE ST",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "IMPERIAL BEACH"
+      ]
+    },
+    {
+      "address": "600 PARK CENTER DR",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SANTEE"
+      ]
+    },
+    {
+      "address": "6000 SAN ELIJO",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "RANCHO SANTA FE"
+      ]
+    },
+    {
+      "address": "700 CERRO BONITA DR",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SAN MARCOS"
+      ]
+    },
+    {
+      "address": "8200 JEFFERSON ST",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "LEMON GROVE"
+      ]
+    },
+    {
+      "address": "8600 GRAVES AV",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SANTEE"
+      ]
+    },
+    {
+      "address": "8800 CUYAMACA ST",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SANTEE"
+      ]
+    },
+    {
+      "address": "8900 LOS COCHES RD",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "LAKESIDE"
+      ]
+    },
+    {
+      "address": "900 NEPTUNE AV",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ENCINITAS"
+      ]
+    },
+    {
+      "address": "9200 HARNESS ST",
+      "categories": [
+        "ordinary_numbered"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SPRING VALLEY"
+      ]
+    },
+    {
+      "address": "AMIGOS RD/E OLD JULIAN HWY",
+      "categories": [
+        "slash_intersection_unspaced",
+        "has_directional",
+        "highway"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "RAMONA"
+      ]
+    },
+    {
+      "address": "E LA CIENEGA RD/N TWIN OAKS VALLEY RD",
+      "categories": [
+        "slash_intersection_unspaced",
+        "has_directional"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "SAN MARCOS"
+      ]
+    },
+    {
+      "address": "ESPOLA RD/EZRA LN",
+      "categories": [
+        "slash_intersection_unspaced"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "POWAY"
+      ]
+    },
+    {
+      "address": "HYGEIA AV/HILLCREST DR",
+      "categories": [
+        "slash_intersection_unspaced"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ENCINITAS"
+      ]
+    },
+    {
+      "address": "SAN VICENTE RD/BARONA MESA RD",
+      "categories": [
+        "slash_intersection_unspaced"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "RAMONA"
+      ]
+    },
+    {
+      "address": "SANTA FE DR/NB INTERSTATE 5",
+      "categories": [
+        "slash_intersection_unspaced",
+        "highway"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "ENCINITAS"
+      ]
+    },
+    {
+      "address": "STATE ROUTE 76/EL SENDERO DR",
+      "categories": [
+        "slash_intersection_unspaced",
+        "highway"
+      ],
+      "occurrences": 1,
+      "communities": [
+        "PAUMA"
+      ]
+    }
+  ]
+}

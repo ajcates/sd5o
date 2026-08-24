@@ -119,6 +119,84 @@
       width: 100%;
     }
 
+    .map-panel {
+      height: 0;
+      overflow: hidden;
+      margin: 0;
+      border-radius: 14px;
+      transition: height 320ms var(--ease-emphasized);
+    }
+
+    .map-panel.open {
+      height: 360px;
+      margin: 14px 0 0;
+    }
+
+    #map-canvas {
+      width: 100%;
+      height: 360px;
+      background: var(--surface-container);
+    }
+
+    .leaflet-container {
+      background: var(--surface-container) !important;
+      border: 1px solid var(--outline-variant);
+      border-radius: 14px;
+      font-family: inherit;
+    }
+
+    .leaflet-control-attribution,
+    .leaflet-bar a {
+      color: var(--on-surface-variant) !important;
+      background: var(--surface-container-high) !important;
+      border-color: var(--outline-variant) !important;
+    }
+
+    .leaflet-control-attribution a {
+      color: var(--primary) !important;
+    }
+
+    .leaflet-bar a:hover {
+      background: var(--surface-container-highest) !important;
+    }
+
+    .call-marker {
+      position: relative;
+      display: block;
+      width: 12px;
+      height: 12px;
+      background: var(--marker-color, var(--primary));
+      border: 2px solid var(--surface);
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+    }
+
+    .call-marker.pulsing::after {
+      position: absolute;
+      inset: 0;
+      border: 1.5px solid var(--marker-color, var(--primary));
+      border-radius: 50%;
+      content: "";
+      opacity: var(--pulse-opacity, 0.5);
+      animation: call-marker-pulse var(--pulse-duration, 2s) var(--ease-standard) infinite;
+    }
+
+    @keyframes call-marker-pulse {
+      0% {
+        opacity: var(--pulse-opacity, 0.5);
+        transform: scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(var(--pulse-scale, 2));
+      }
+    }
+
+    tbody tr.selected td {
+      background: rgba(77, 157, 255, 0.18);
+      transition: background 200ms var(--ease-standard);
+    }
+
     .brand {
       grid-area: brand;
       display: flex;
@@ -885,7 +963,10 @@
           </div>
         </div>
 
-        <nav id="buttons" aria-label="Feed actions"></nav>
+        <nav id="buttons" aria-label="Feed actions">
+          <span id="map-toggle-slot"></span>
+          <span id="search-toggle-slot"></span>
+        </nav>
       </header>
 
       <div class="search-bar" id="search-bar">
@@ -898,687 +979,14 @@
       </div>
     </div>
 
-    <section class="status-panel loading" id="status-panel" aria-label="Calls feed status">
-      <div class="feed-summary">
-        <span class="status-dot" aria-hidden="true"></span>
-        <div>
-          <span class="status-label">Live incident feed</span>
-          <p class="update-line">Last updated <span data-time="" id="update">loading…</span></p>
-        </div>
-      </div>
-      <div class="status-meta">
-        <span id="calls-status" role="status" aria-live="polite">Connecting</span>
-        <span id="event-count">Fetching calls</span>
-      </div>
-    </section>
+    <section class="map-panel" id="map-panel" aria-label="Calls map"></section>
 
-    <main id="listing" aria-live="polite">
-      <div class="loading-state" aria-hidden="true">
-        <div class="loading-content">
-          <p>Loading active calls…</p>
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-          <div class="loading-bar"></div>
-        </div>
-      </div>
-    </main>
+    <section class="status-panel loading" id="status-panel" aria-label="Calls feed status"></section>
+
+    <main id="listing" aria-live="polite"></main>
   </div>
-      <!-- Add the script to register the service worker -->
-      <script>
-  // ==UserScript==
-  // @name        New script - sdsheriff.gov
-  // @namespace   Violentmonkey Scripts
-  // @match       https://callsforservice.sdsheriff.gov/
-  // @grant       none
-  // @version     1.0
-  // @author      -
-  // @description 2/23/2023, 6:03:36 PM
-  //
-  // ==/UserScript==/
-  //
-  //
 
-  const storage = window.localStorage;
-     /*
-var geocoder = new google.maps.Geocoder();
-var address = "new york";
-
-if (status == google.maps.GeocoderStatus.OK) {
-    var latitude = results[0].geometry.location.lat();
-    var longitude = results[0].geometry.location.lng();
-    alert(latitude);
-    } 
-}); */
-  class Nearby {
-    constructor(table) {
-      this.table = table;
-      this.buttonsElement = document.getElementById('buttons');
-      this.permisson = this.getPermission();
-      this.button = this.createButton();
-      if (this.permisson) {
-        this.buttonsElement.prepend(this.button);
-      } else {
-        this.addDistanceColumn();
-      }
-      this.button.id = 'nearme';
-      this.button.innerHTML = '📏';
-      this.button.addEventListener('click', this.askPermission.bind(this));
-
-      return this.button;
-    }
-    createButton() {
-      const button = document.createElement('button');
-      return button;
-    }
-    
-
-    askPermission() {
-      console.log("nearme");
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          console.log('Latitude:', position.coords.latitude);
-          console.log('Longitude:', position.coords.longitude);
-          window.localStorage.setItem('longitude',  position.coords.longitude);
-          window.localStorage.setItem('latitude', position.coords.latitude);
-          this.coords = position.coords;
-          this.addDistanceColumn();
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-        }
-      );
-    }
-
-    getPermission() {
-      if (navigator.geolocation) {
-        return true;
-      } else {
-        return false;
-      }
-    }
-    getLocation() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((position) => {
-          this.coords = position.coords;
-        });
-      }
-      return this.coords;
-    }
-    async addDistanceColumn() {
-      let table = document.querySelector('table');
-      console.log(table);
-      let header = table.querySelector('thead tr');
-      let th = document.createElement('th');
-      th.innerHTML = 'Distance';
-                                 
-      header.prepend(th);
-
-      let rows = table.querySelectorAll('tbody tr');
-      rows.forEach((row) => {
-        let td = document.createElement('td');
-        row.prepend(td);
-      });
-      for(const row of rows) {
-        if (row.classList.contains('map')) {
-          const atd = row.querySelector('td:first-child');
-          atd.colSpan = atd.colSpan + 1;
-          continue;
-        }
-        let address = row.querySelector('td.Address').innerText + ' ' + row.querySelector('td.Commuinty') + ' California';
-        let spot = await this.geoCodeCache(address);
-        console.log(spot);
-        //this.coords = this.getLocation();
-        console.log(this.coords);
-
-        const lng = this.coords.longitude;
-        const lat = this.coords.latitude;
-        //let distance = this.getDistanceInMilesAndFeet(spot);
-        let miles = calcCrow(spot.lat, spot.lng, lat, lng);
-        if (miles < 1) {
-          row.classList.add('nearby');
-          row.style.backgroundColor = 'rgba(255, 0, 0, 0.5);';
-          var cachedEvent = localStorage.getItem(row.dataset.eventNumber);
-          if (cachedEvent) {
-            cachedEvent = JSON.parse(cachedEvent);
-            cachedEvent.nearby = true;
-            localStorage.setItem(row.dataset.eventNumber, JSON.stringify(cachedEvent));
-          }
-        } else if(miles < 3) {
-          row.style.backgroundColor = 'rgba(0,0,255,0.2) !important';
-        }
-        let output = prettyPrintDistance(miles);
-        row.querySelector('td:first-child').innerHTML = output;
-      }
-
-      //const sortableTable = new SortableTable("table");
-
-    }
-
-    getDistanceInMilesAndFeet(spot) {
-    // Convert latitudes and longitudes to radians
-      const lat1Radians = toRadians(spot.lat);
-      const lng1Radians = toRadians(spot.lng);
-      const lat2Radians = toRadians(this.coords.lat);
-      const lng2Radians = toRadians(this.coords.lng);
-
-      // Calculate the distance using the Haversine formula
-      const earthRadiusInMiles = 3958.8;
-      const deltaLat = lat2Radians - lat1Radians;
-      const deltaLng = lng2Radians - lng1Radians;
-      const a = Math.pow(Math.sin(deltaLat / 2), 2) +
-                Math.cos(lat1Radians) * Math.cos(lat2Radians) *
-                Math.pow(Math.sin(deltaLng / 2), 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const distanceInMiles = earthRadiusInMiles * c;
-      const distanceInFeet = distanceInMiles * 5280;
-
-      // Round the distance to the nearest mile and foot
-      const distanceInMilesRounded = Math.round(distanceInMiles);
-      const distanceInFeetRounded = Math.round(distanceInFeet);
-
-      // Return an object with the distance in miles and feet
-      return {
-        miles: distanceInMilesRounded,
-        feet: distanceInFeetRounded - (distanceInMilesRounded * 5280),
-      };
-    }
-
-   async geoCodeCache(address) {
-    // Check if the coordinates are available in the browser's key storage cache
-    const cache = window.localStorage;
-    const cachedLatLng = cache.getItem(address);
-    if (cachedLatLng !== null) {
-      const coords = JSON.parse(cachedLatLng);
-      console.log('Cache hit');
-      return coords;
-    } 
-
-    // If the coordinates are not available in the cache, call the getLatLngForAddress function to get them
-    const coords = await getLatLngForAddress(address);
-    // Cache the coordinates in the browser's key storage cache for future use
-    cache.setItem(address, JSON.stringify(coords));
-
-    // Return the coordinates
-    return coords;
-  }
-
-
-
-  }
-
-
-   
-      //This function takes in latitude and longitude of two location and returns the distance between them as the crow flies (in km)
-      function calcCrow(lat1, lon1, lat2, lon2) {
-        console.log(`https://www.distance.to/${lat1},${lon1}/${lat2},${lon2}`);
-        var R = 3958.761; // m
-        var dLat = toRad(lat2-lat1);
-        var dLon = toRad(lon2-lon1);
-        var lat1 = toRad(lat1);
-        var lat2 = toRad(lat2);
-
-        var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-
-          Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
-        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-        var d = R * c;
-        console.log(`miles: ${d}`);
-        return d;
-      }
-  //a function that pretty prints miles that are a floating number to tenths of a mile and feet
-  //so 1.5686 miles becomes 1.5 miles and 362 feet
-  //it will return back a string
-  function prettyPrintDistance(miles) {
-    miles = miles * 10;
-    let feet = miles * 528;
-    feet = feet % 5280;
-    feet = Math.round(feet);
-    miles = Math.floor(miles);
-    miles = miles / 10;
-    return `${miles} miles ${feet} feet`;
-  }
-
-      // Converts numeric degrees to radians
-      function toRad(Value) 
-      {
-          return Value * Math.PI / 180;
-      }
-
-  function toRadians(degrees) {
-    return degrees * Math.PI / 180;
-  }
-  async function getLatLngForAddress(address) {
-    // Construct the Google Maps Geocoding API URL with the address parameter
-    const apikey = "AIzaSyAhHsSxRyTrAV5cU7bzyXvK1M54S0RVADY"
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apikey}`;
-
-    try {
-      // Make a request to the Geocoding API
-      const response = await fetch(url);
-      const data = await response.json();
-      console.log(data);
-      // Check if the API returned a successful response
-      if (data.status === 'OK') {
-        // Extract the latitude and longitude from the first result
-        return data.results[0].geometry.location;
-
-        // Return an objet with the latitude and longitude
-      } else {
-        // Log an error message if the API did not return a successful response
-        console.error(`Geocoding API error: ${data.status}`);
-        return null;
-      }
-    } catch (error) {
-      // Log any errors that occur during the API request
-      console.error('Error getting latitude and longitude:', error);
-      return null;
-    }
-  }
-        
-  class CallsForService {
-    constructor() {
-      this.apiUrl = "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents";
-      this.apiKey = "LrxsShPJ3sVycwPqa_Dk-EajBxZJfQGbDBQK1c5wbBoBAzFu2CxMqA==";
-      this.proxyUrl = "https://api.cors.syrins.tech/?url=";
-      this.buttonsElement = document.getElementById('buttons');
-      this.listingElement = document.getElementById('listing');
-      this.updateElement = document.getElementById('update');
-      this.statusElement = document.getElementById('calls-status');
-      this.statusPanel = document.getElementById('status-panel');
-      this.eventCountElement = document.getElementById('event-count');
-      this.filterElement = document.getElementById('filter');
-      this.searchBar = document.getElementById('search-bar');
-      this.isRefreshing = false;
-      this.addSearchToggleButton();
-      this.addTable();
-    }
-    getRequestUrl() {
-      const sourceUrl = new URL(this.apiUrl);
-      sourceUrl.searchParams.set('code', this.apiKey);
-      sourceUrl.searchParams.set('_', Date.now().toString());
-      return this.proxyUrl + encodeURIComponent(sourceUrl.toString());
-    }
-    addSearchToggleButton() {
-      this.searchToggleButton = document.createElement('button');
-      this.searchToggleButton.className = 'icon-button';
-      this.searchToggleButton.type = 'button';
-      this.searchToggleButton.title = 'Search calls';
-      this.searchToggleButton.setAttribute('aria-label', 'Search calls');
-      this.searchToggleButton.setAttribute('aria-expanded', 'false');
-      this.searchToggleButton.setAttribute('aria-controls', 'search-bar');
-      this.searchToggleButton.innerHTML = `
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M9.5 3a6.5 6.5 0 1 0 3.98 11.64L19.85 21 21 19.85l-6.36-6.37A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"/>
-        </svg>`;
-      this.searchToggleButton.addEventListener('click', this.toggleSearch.bind(this));
-      this.buttonsElement.appendChild(this.searchToggleButton);
-    }
-    toggleSearch() {
-      const isOpen = this.searchBar.classList.toggle('open');
-      this.searchToggleButton.setAttribute('aria-expanded', String(isOpen));
-      if (isOpen) {
-        this.filterElement.focus();
-      } else {
-        this.filterElement.blur();
-      }
-    }
-    refresh() {
-      return this.addTable();
-    }
-    async addTable() {
-      if (this.isRefreshing) {
-        return;
-      }
-      this.isRefreshing = true;
-      const hasExistingTable = Boolean(this.table);
-      this.statusPanel.classList.add('loading');
-      this.statusPanel.classList.remove('error');
-      this.statusElement.classList.remove('error');
-      this.statusElement.textContent = 'Updating';
-      if (!hasExistingTable) {
-        this.eventCountElement.textContent = 'Fetching calls';
-        this.listingElement.innerHTML = `
-          <div class="loading-state" aria-hidden="true">
-            <div class="loading-content">
-              <p>Loading active calls…</p>
-              <div class="loading-bar"></div>
-              <div class="loading-bar"></div>
-              <div class="loading-bar"></div>
-            </div>
-          </div>`;
-      }
-
-      try {
-        const json = await fetchJson(this.getRequestUrl());
-        if (!json || !Array.isArray(json.Events)) {
-          throw new Error('The calls service returned an unexpected response.');
-        }
-
-        this.events = json;
-        this.updateElement.innerHTML = prettyTime(this.events.LastUpdated);
-        this.updateElement.dataset.time = this.events.LastUpdated;
-        this.table = this.buildTable(this.events);
-        this.listingElement.replaceChildren(this.table);
-        this.statusPanel.classList.remove('loading');
-        this.statusElement.textContent = 'Live';
-        if (this.tableFilter) {
-          this.tableFilter.setTable(this.table);
-        } else {
-          this.tableFilter = new TableFilter(this.table);
-        }
-        this.tableFilter.runFilter();
-      } catch (error) {
-        console.error('Unable to load calls for service:', error);
-        this.statusPanel.classList.remove('loading');
-        this.statusPanel.classList.add('error');
-        this.statusElement.classList.add('error');
-        this.statusElement.textContent = 'Connection issue';
-
-        if (!hasExistingTable) {
-          this.updateElement.textContent = 'unavailable';
-          this.updateElement.removeAttribute('data-time');
-          this.eventCountElement.textContent = 'No data';
-
-          const errorState = document.createElement('div');
-          errorState.className = 'error-state';
-          const errorMessage = document.createElement('div');
-          const errorTitle = document.createElement('strong');
-          const errorDetail = document.createElement('span');
-          errorTitle.textContent = 'Unable to load calls';
-          errorDetail.textContent = error.message;
-          errorMessage.append(errorTitle, errorDetail);
-          errorState.appendChild(errorMessage);
-          this.listingElement.replaceChildren(errorState);
-        }
-      } finally {
-        this.isRefreshing = false;
-      }
-    }
-    
-    buildTable(jsonData) {
-    // create a table element
-    const table = document.createElement('table');
-      const thead = document.createElement('thead');
-      const tbody = document.createElement('tbody');
-      const data = jsonData;
-
-    // create a header row with column names
-    const header = document.createElement('tr');
-      console.log(data);
-   /*EventNumber": "E8375208",
-        "IsOpen": true,
-        "DateTime": "02/24/23 06:44",
-        "Address": "400 HARDELL LN",
-        "ServiceArea": "VISTA / FALLBROOK",
-        "Community": "UNINCORPORATED VISTA",
-        "EventType": "11-7 PROWLER"*/ 
-    let headers = ["Address", "DateTime", "EventType"];
-
-    for (const key of headers) {
-      console.log(key);
-
-      
-      
-      const th = document.createElement('th');
-      th.classList.add(key);
-      th.textContent = key;
-      header.appendChild(th);
-    }
-    thead.appendChild(header);
-
-    // create a row for each event object
-    
-    for (const [eventIndex, event] of jsonData.Events.entries()) {
-      const row = document.createElement('tr');
-      row.style.setProperty('--row-index', jsonData.Events.length - eventIndex);
-
-      var cachedEvent = localStorage.getItem(event.EventNumber);
-      if(cachedEvent){
-        console.log("cached event");
-        var oldEvent = JSON.parse(cachedEvent);
-        console.log(oldEvent);
-        if(oldEvent['nearby']){
-          event['nearby'] = true;
-        }
-        for(var k in oldEvent){
-          if(event[k] != oldEvent[k]){
-            console.log("event changed");
-            localStorage.setItem(event.EventNumber, JSON.stringify(event));
-            event["changed"] = true;
-            break;
-          }
-        }
-      } else {
-        console.log("new event");
-        localStorage.setItem(event.EventNumber, JSON.stringify(event));
-        event["new"] = true;
-      }
-
-      if(event["changed"]){
-        row.classList.add("changed");
-      }
-      if(event["new"]){
-        row.classList.add("new");
-      }
-      if(event["nearby"]){
-        row.classList.add("nearby");
-      }
-      row.dataset.eventNumber = event.EventNumber;
-
-      // create a cell for each property of the event object
-      for (const key of headers) {
-        const cell = document.createElement('td');
-        cell.dataset.label = key;
-      if(key == "Address"){
-        const address = `${event[key]}, ${event["Community"]}`;
-        const addressLink = document.createElement('a');
-        const addressLine = document.createElement('span');
-        const communityLine = document.createElement('span');
-        addressLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-        addressLink.target = '_blank';
-        addressLink.rel = 'noopener noreferrer';
-        addressLine.className = 'address-primary';
-        communityLine.className = 'community';
-        addressLine.textContent = event[key];
-        communityLine.textContent = event["Community"];
-        addressLink.append(addressLine, communityLine);
-        cell.appendChild(addressLink);
-      } else if(key == "DateTime"){
-          cell.textContent = prettyTime(event[key]);
-          cell.title = event[key];
-        } else {
-            cell.textContent = event[key];
-        }
-        cell.classList.add(key);
-        row.appendChild(cell);
-      }
-      if(event["IsOpen"]){
-        row.classList.add("open");
-      }
-
-      row.addEventListener("click", (e) => {
-        if (e.target.closest('a')) {
-          return;
-        }
-        if(row.classList.contains("mapopen")){
-          row.classList.remove("mapopen");
-          row.setAttribute('aria-expanded', 'false');
-          const mapRow = row.nextElementSibling;
-          if (mapRow && mapRow.classList.contains('map')) {
-            const slide = mapRow.querySelector('.map-slide');
-            mapRow.classList.remove('open');
-            const removeWhenCollapsed = (evt) => {
-              if (evt.target !== slide || evt.propertyName !== 'height') {
-                return;
-              }
-              slide.removeEventListener('transitionend', removeWhenCollapsed);
-              mapRow.remove();
-            };
-            slide.addEventListener('transitionend', removeWhenCollapsed);
-          }
-        } else {
-          const mapRow = document.createElement("tr");
-          mapRow.classList.add("map");
-          const mapCell = document.createElement("td");
-          mapCell.colSpan = document.querySelectorAll("th").length;
-          const mapSlide = document.createElement('div');
-          mapSlide.className = 'map-slide';
-          const mapFrame = document.createElement('iframe');
-          mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(event["Address"] + ", " + event["Community"])}&t=h&output=embed&z=16`;
-          mapFrame.title = `Map near ${event["Address"]}`;
-          mapFrame.loading = 'lazy';
-          mapSlide.appendChild(mapFrame);
-          mapCell.appendChild(mapSlide);
-          mapRow.appendChild(mapCell);
-
-          insertAfter(row, mapRow);
-          row.classList.add("mapopen");
-          row.setAttribute('aria-expanded', 'true');
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              mapRow.classList.add('open');
-            });
-          });
-        }
-      });
-
-      tbody.prepend(row);
-    }
-    table.appendChild(thead);
-    table.appendChild(tbody);
-    return table;
-  }
-  }
-  function prettyTime(datestring){
-    const normalizedDate = String(datestring).replace(
-      /^(\d{2})-(\d{2})-(\d{4})/,
-      '$1/$2/$3'
-    );
-    const diff = new Date(normalizedDate) - new Date();
-    const minutes = Math.round(diff / 60000);
-
-    const formatter = new Intl.RelativeTimeFormat('en-US', {
-        numeric: 'auto',
-    });
-
-    if (Math.abs(minutes) < 60) {
-      return formatter.format(minutes, 'minute');
-    }
-
-    const hours = Math.round(minutes / 60);
-    if (Math.abs(hours) < 24) {
-      return formatter.format(hours, 'hour');
-    }
-
-    return formatter.format(Math.round(hours / 24), 'day');
-  }
-  async function fetchJson(url) {
-    const response = await fetch(url, {
-      cache: 'no-store',
-    });
-    const responseText = await response.text();
-    let data;
-
-    try {
-      data = JSON.parse(responseText);
-      if (typeof data === 'string') {
-        data = JSON.parse(data);
-      }
-    } catch (error) {
-      throw new Error(`Calls service returned invalid JSON (HTTP ${response.status}).`);
-    }
-
-    if (!response.ok) {
-      const message = data.message || data.error || response.statusText || 'Request failed';
-      throw new Error(`${message} (HTTP ${response.status}).`);
-    }
-
-    return data;
-  }
-  function insertAfter(referenceNode, newNode) {
-      referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
-  }
-
-  // Example usage
-  //const sortableTable = new SortableTable("table.sortable");
-
-
-  class TableFilter {
-    constructor(table){
-      this.filterInput = document.querySelector("input#filter");
-      this.eventCountElement = document.querySelector("#event-count");
-      this.setTable(table);
-      this.filterInput.addEventListener("change", this.runFilter.bind(this));
-      this.filterInput.addEventListener("input", this.runFilter.bind(this));
-
-    }
-    setTable(table) {
-      this.table = table;
-    }
-    runFilter() {
-      const filter = this.filterInput.value;
-      const rows = this.table.querySelectorAll("tbody tr:not(.map)");
-      let visibleCount = 0;
-      for(const row of rows){
-        const matches = row.textContent.toLowerCase().includes(filter.toLowerCase());
-        const mapRow = row.nextElementSibling?.classList.contains('map')
-          ? row.nextElementSibling
-          : null;
-        if(matches){
-          row.classList.remove("hidden");
-          mapRow?.classList.remove('hidden');
-          visibleCount += 1;
-        } else {
-          row.classList.add("hidden");
-          mapRow?.classList.add('hidden');
-        }
-      }
-      this.eventCountElement.textContent = filter
-        ? `${visibleCount} of ${rows.length} calls`
-        : `${rows.length} call${rows.length === 1 ? '' : 's'}`;
-    }
-  }
-
-  setInterval(() => {
-    console.log("updating");
-    var updateElement = document.getElementById("update");
-    if (updateElement.dataset.time) {
-      updateElement.textContent = prettyTime(updateElement.dataset.time);
-    }
-
-  }, 60000);
-  document.addEventListener('DOMContentLoaded', () => {
-    const callsForService = new CallsForService();
-
-    let lastScrollY = window.scrollY;
-    window.addEventListener('scroll', () => {
-      const currentScrollY = window.scrollY;
-      if (currentScrollY === 0 && lastScrollY > 0) {
-        callsForService.refresh();
-      }
-      lastScrollY = currentScrollY;
-    }, { passive: true });
-  });
-  </script>
-  <script>
-	window.addEventListener('load', () => {
-	registerSW();
-	});
-
-	// Register the Service Worker
-	async function registerSW() {
-	if ('serviceWorker' in navigator) {
-		try {
-		await navigator
-				.serviceWorker
-				.register('serviceworker.js');
-		}
-		catch (e) {
-		console.log('SW registration failed');
-		}
-	}
-	}
-</script>
+  <script type="module" src="src/app/main.js"></script>
 
   </body>
   </html>

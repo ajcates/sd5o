@@ -1,1 +1,7 @@
 index.zip
+
+# OffGeo: retained source archives and scratch build output.
+# Exact bytes are content-addressed and reproducible from tools/offgeo/config/sources.lock.json;
+# they must never be committed (roadmap.md OFF-016).
+/build/
+__pycache__/

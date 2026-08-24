@@ -1,0 +1,70 @@
+{
+  "$schema": "./sources.lock.schema.json",
+  "countyFips": "06073",
+  "sources": [
+    {
+      "id": "sangis-roads-all",
+      "publisher": "SanGIS",
+      "dataset": "Roads - All",
+      "adapter": "sangis-roads-all",
+      "url": "https://geo.sandag.org/server/rest/directories/downloads/Roads_All_shapefile.zip",
+      "documentationUrl": "https://data.sandiego.gov/datasets/gis-roads-all/",
+      "licenseUrl": "https://opendefinition.org/licenses/odc-pddl/",
+      "licenseName": "Open Data Commons Public Domain Dedication and Licence (ODC-PDDL) 1.0",
+      "attribution": "Source: SanGIS/SANDAG, Roads - All. Public domain (ODC-PDDL).",
+      "publisherDisplayedVintage": "2026-08-10",
+      "sha256": "c432371b4011572ae8e2c135087d359c9f62b65e36e33c89fc675b9e78356694",
+      "byteLength": 103374275,
+      "retrievedAt": "2026-08-23T03:26:12Z",
+      "retainedPath": "build/offgeo-sources/c432371b4011572ae8e2c135087d359c9f62b65e36e33c89fc675b9e78356694.zip"
+    },
+    {
+      "id": "sangis-address-points",
+      "publisher": "SanGIS",
+      "dataset": "Address Points to APN",
+      "adapter": "sangis-address-points",
+      "url": "https://geo.sandag.org/server/rest/directories/downloads/Address_Points_shapefile.zip",
+      "documentationUrl": "https://data.sandiego.gov/datasets/gis-address-points-apn/",
+      "licenseUrl": "https://opendefinition.org/licenses/odc-pddl/",
+      "licenseName": "Open Data Commons Public Domain Dedication and Licence (ODC-PDDL) 1.0",
+      "attribution": "Source: SanGIS/SANDAG, Address Points to APN. Public domain (ODC-PDDL). APN/parcel/unit fields are excluded from any derived output.",
+      "publisherDisplayedVintage": "2026-08-10",
+      "sha256": "a792711074d4d07543826e2228c42d56fb9c375261295efbd551334c825853b0",
+      "byteLength": 76627495,
+      "retrievedAt": "2026-08-23T03:27:35Z",
+      "retainedPath": "build/offgeo-sources/a792711074d4d07543826e2228c42d56fb9c375261295efbd551334c825853b0.zip"
+    },
+    {
+      "id": "census-addrfeat-06073",
+      "publisher": "U.S. Census Bureau",
+      "dataset": "TIGER/Line ADDRFEAT (San Diego County, 06073)",
+      "adapter": "census-addrfeat",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/ADDRFEAT/tl_2025_06073_addrfeat.zip",
+      "documentationUrl": "https://www2.census.gov/geo/pdfs/maps-data/data/tiger/tgrshp2025/TGRSHP2025_TechDoc.pdf",
+      "licenseUrl": "https://www.census.gov/about/policies/open-gov/open-data.html",
+      "licenseName": "U.S. Government work, not copyright-protected (17 U.S.C. \u00a7105); Census Bureau requests citation",
+      "attribution": "Source: U.S. Census Bureau, TIGER/Line Shapefiles 2025, ADDRFEAT. This is a derived product, not endorsed by the Census Bureau.",
+      "publisherDisplayedVintage": "TIGER2025",
+      "sha256": "750f9eaf9d00d11bfbd8eb4ab030d386c27fbe03fe510a67ec14789842161a8b",
+      "byteLength": 15102855,
+      "retrievedAt": "2026-08-23T03:27:51Z",
+      "retainedPath": "build/offgeo-sources/750f9eaf9d00d11bfbd8eb4ab030d386c27fbe03fe510a67ec14789842161a8b.zip"
+    },
+    {
+      "id": "census-featnames-06073",
+      "publisher": "U.S. Census Bureau",
+      "dataset": "TIGER/Line FEATNAMES (San Diego County, 06073)",
+      "adapter": "census-featnames",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/FEATNAMES/tl_2025_06073_featnames.zip",
+      "documentationUrl": "https://www2.census.gov/geo/pdfs/maps-data/data/tiger/tgrshp2025/TGRSHP2025_TechDoc.pdf",
+      "licenseUrl": "https://www.census.gov/about/policies/open-gov/open-data.html",
+      "licenseName": "U.S. Government work, not copyright-protected (17 U.S.C. \u00a7105); Census Bureau requests citation",
+      "attribution": "Source: U.S. Census Bureau, TIGER/Line Shapefiles 2025, FEATNAMES. This is a derived product, not endorsed by the Census Bureau.",
+      "publisherDisplayedVintage": "TIGER2025",
+      "sha256": "454d8bb0c4e187c48d6f11d0c8709af4db69f118d6545b63407835b02393d045",
+      "byteLength": 3418066,
+      "retrievedAt": "2026-08-23T03:28:28Z",
+      "retainedPath": "build/offgeo-sources/454d8bb0c4e187c48d6f11d0c8709af4db69f118d6545b63407835b02393d045.zip"
+    }
+  ]
+}
