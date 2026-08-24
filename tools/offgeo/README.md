@@ -52,7 +52,15 @@ Read directly from each archive's `.prj` (not yet transformed — this is a reco
 - **Census `census-addrfeat-06073`**: `GCS_North_American_1983` — geographic (longitude/latitude in degrees), NAD83 datum. Close to WGS84 for this application's accuracy budget, but the datum difference should still be an explicit, versioned transform per `spec.md` §6.1 rather than an implicit relabel.
 - `census-featnames-06073` carries no geometry, so no CRS applies.
 
-Known-coordinate control-point validation (verifying specific San Diego landmarks transform to their expected WGS84 coordinates within tolerance) is still open — that requires the R1 transform implementation to test against, and is tracked as part of `OFF-109`/`OFF-205`, not finished by this note alone.
+Known-coordinate control-point validation against the *production* R1 transform is still open — that transform doesn't exist yet, and is tracked as part of `OFF-109`/`OFF-205`, not finished by this note alone. Ahead of that, the map-prototype work's own transform (`tools/offgeo/lib/coords.py`, State Plane EPSG:2230 → WGS84 via PROJ `cs2cs`) now has three real control points checked in `tests/offgeo/unit/test_coords.py`, geographically spread to catch a gross axis-swap/unit error rather than just one lucky match:
+
+| Landmark | Real SanGIS address point | State Plane (ft) | Transformed WGS84 | Independently plausible? |
+| --- | --- | --- | --- | --- |
+| Downtown San Diego | 611 W G St | 6279119.9, 1840176.1 | 32.71225, -117.16857 | Yes — matches the known downtown block |
+| Balboa Park (central Prado) | 1500 El Prado | 6285018.6415, 1847261.2475 | 32.73187, -117.14959 | Yes — matches the well-known Prado/museum row location |
+| La Jolla Village | 7600 Girard Ave | 6247331.5175, 1887762.38825 | 32.84222, -117.27342 | Yes — matches the well-known La Jolla village core |
+
+These are prototype-transform control points, not a substitute for `OFF-109`/`OFF-205`'s eventual validation of whatever R1 actually ships — but they already catch the class of error this item exists to catch (wrong axis order, wrong State Plane zone/units, NAD83-as-WGS84 mislabeling), since any of those would move at least one of these three points by tens to thousands of kilometers, not fractions of a degree.
 
 ## Build-host resource budget (`OFF-017`)
 
