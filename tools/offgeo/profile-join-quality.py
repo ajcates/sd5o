@@ -7,7 +7,7 @@ JSONL output -- so the join-rate/range-validity numbers here measure
 what a downstream compiler stage would actually see, not just each
 source's internal shape.
 
-Two passes:
+Four passes:
 
 1. Roads range validity (spec.md 6.1 step 9's neighbor requirement,
    §6.3): for each side (left/right) of each road segment, classify the
@@ -24,6 +24,19 @@ Two passes:
    the joined road's own combined range as a coarse plausibility signal
    -- not the real interpolation/parity logic R4's geocoder will need,
    just a profiling-grade sanity check.
+3. Mix/parity/offset flag distributions: SanGIS `LMIXADDR`/`RMIXADDR`
+   (does a side mix odd/even numbers) and Census `PARITYL`/`PARITYR`/
+   `OFFSETL`/`OFFSETR` (odd/even/both, and whether the range is offset
+   from the true parcel line) -- counted but not yet consumed by any
+   scoring logic (that's R4's job); this just proves the fields parse
+   and reports their real distribution.
+4. Duplicate road geometry: how many distinct `ROADSEGID`s share an
+   exactly identical vertex sequence with at least one other segment --
+   spec.md 6.3 asks this be de-duplicated before it reaches range/name
+   records, so it needs to be counted first.
+5. ZIP consistency: for joined address points, does the point's own
+   `ADDRZIP` match either side's `L_ZIP`/`R_ZIP` on its joined road --
+   a locality/ZIP gap signal, counted, not repaired here.
 
 Usage: python3 tools/offgeo/profile-join-quality.py
   (requires build/offgeo-sources/r1-sangis-roads.jsonl and
@@ -76,6 +89,9 @@ def main() -> None:
     both_sides_absent = 0
     extreme_span_count = 0
     confidence_counts = {"ORDINARY": 0, "FALLBACK": 0, "EXCLUDED": 0}
+    lmix_counts: dict[str, int] = {}
+    rmix_counts: dict[str, int] = {}
+    geometry_hash_counts: dict[str, int] = {}
 
     for road in iter_jsonl(ROADS_PATH):
         roads_by_id[road["roadsegid"]] = road
@@ -101,7 +117,19 @@ def main() -> None:
         if spans and max(spans) > EXTREME_SPAN_THRESHOLD:
             extreme_span_count += 1
 
+        lmix_key = ar["lMix"] or "(blank)"
+        rmix_key = ar["rMix"] or "(blank)"
+        lmix_counts[lmix_key] = lmix_counts.get(lmix_key, 0) + 1
+        rmix_counts[rmix_key] = rmix_counts.get(rmix_key, 0) + 1
+
+        geom_key = json.dumps(road["geometryWgs84"], separators=(",", ":"))
+        geometry_hash_counts[geom_key] = geometry_hash_counts.get(geom_key, 0) + 1
+
     print(f"  {len(roads_by_id)} roads loaded")
+
+    duplicate_geometry_groups = sum(1 for c in geometry_hash_counts.values() if c > 1)
+    duplicate_geometry_segments = sum(c for c in geometry_hash_counts.values() if c > 1)
+    del geometry_hash_counts  # only needed for the two counts above
 
     print("Streaming address points, joining by ROADSEGID...")
     total_points = 0
@@ -112,6 +140,9 @@ def main() -> None:
     contained_count = 0
     outside_range_count = 0
     no_range_to_check_count = 0
+    zip_matched = 0
+    zip_mismatched = 0
+    zip_not_checkable = 0
 
     for point in iter_jsonl(ADDRESS_POINTS_PATH):
         total_points += 1
@@ -128,6 +159,21 @@ def main() -> None:
 
         joined += 1
         joined_confidence_counts[road["confidence"]] += 1
+
+        # ZIP consistency is independent of range containment below --
+        # deliberately checked before that block's `continue` so a point
+        # with no usable range still gets a ZIP check (an earlier version
+        # of this script coupled the two, silently skipping ZIP checks
+        # for the 247 no-range points; fixed so the two counts are each
+        # complete over the full joined population).
+        point_zip = point["zip"]
+        road_zips = {z for z in (road["zip"]["left"], road["zip"]["right"]) if z}
+        if not point_zip or not road_zips:
+            zip_not_checkable += 1
+        elif point_zip in road_zips:
+            zip_matched += 1
+        else:
+            zip_mismatched += 1
 
         ar = road["addressRange"]
         bounds = [int(ar[k]) for k in ("lLow", "lHigh", "rLow", "rHigh") if int(ar[k]) != 0]
@@ -152,6 +198,10 @@ def main() -> None:
             "bothSidesAbsentRate": round(both_sides_absent / len(roads_by_id), 4),
             "extremeSpanThreshold": EXTREME_SPAN_THRESHOLD,
             "extremeSpanCount": extreme_span_count,
+            "lMixAddrCounts": lmix_counts,
+            "rMixAddrCounts": rmix_counts,
+            "duplicateGeometryGroupCount": duplicate_geometry_groups,
+            "duplicateGeometrySegmentCount": duplicate_geometry_segments,
         },
         "addressPointJoin": {
             "totalAddressPoints": total_points,
@@ -177,6 +227,25 @@ def main() -> None:
                     "revised after an address point was captured."
                 ),
             },
+            "zipConsistencyAmongJoined": {
+                "matched": zip_matched,
+                "mismatched": zip_mismatched,
+                "notCheckable": zip_not_checkable,
+                "matchedRateOfCheckable": (
+                    round(zip_matched / (zip_matched + zip_mismatched), 4)
+                    if (zip_matched + zip_mismatched)
+                    else 0
+                ),
+                "note": (
+                    "Point's ADDRZIP compared against both sides of its joined "
+                    "road's L_ZIP/R_ZIP (not just the side its house number is "
+                    "actually on -- that needs the same parity/side logic the "
+                    "range-containment check above doesn't have either). A "
+                    "mismatch here is a real locality/ZIP gap candidate, not "
+                    "proof of an error -- ZIP boundaries don't always follow "
+                    "road-segment boundaries exactly."
+                ),
+            },
         },
         "totalSeconds": round(time.time() - t0, 2),
     }
@@ -187,6 +256,8 @@ def main() -> None:
     print(f"  Left side classification: {side_classification_counts['left']}")
     print(f"  Right side classification: {side_classification_counts['right']}")
     print(f"  Extreme spans (>{EXTREME_SPAN_THRESHOLD}): {extreme_span_count}")
+    print(f"  LMIXADDR: {lmix_counts}, RMIXADDR: {rmix_counts}")
+    print(f"  Duplicate geometry: {duplicate_geometry_groups} groups covering {duplicate_geometry_segments} segments")
     print(f"\nAddress points: {total_points} total")
     print(f"  Unjoined (ROADSEGID=0 sentinel): {unjoined_sentinel} ({report['addressPointJoin']['unjoinedSentinelRate']:.1%})")
     print(f"  Joined: {joined} ({report['addressPointJoin']['joinedRate']:.1%})")
@@ -196,6 +267,11 @@ def main() -> None:
         f"  Range containment among joined: {contained_count}/{peak_checked} contained "
         f"({report['addressPointJoin']['rangeContainmentAmongJoined']['containedRate']:.1%}), "
         f"{outside_range_count} outside range, {no_range_to_check_count} had no usable range to check"
+    )
+    zip_rate = report["addressPointJoin"]["zipConsistencyAmongJoined"]["matchedRateOfCheckable"]
+    print(
+        f"  ZIP consistency: {zip_matched} matched, {zip_mismatched} mismatched "
+        f"({zip_rate:.1%} of checkable), {zip_not_checkable} not checkable"
     )
     print(f"\nReport: {REPORT_PATH}")
 

@@ -186,13 +186,13 @@ ADDRFEAT also has no field that's unique on its own — `TLID` legitimately repe
 
 All four `OFF-101` thin source readers now exist and run cleanly against the real retained archives.
 
-## Phase R1, Group B — range and join-quality profiling (`OFF-103`, partial)
+## Phase R1, Group B — range and join-quality profiling (`OFF-103`, mostly done)
 
 ```sh
 python3 tools/offgeo/profile-join-quality.py   # requires the roads + address-points readers' output first
 ```
 
-`tools/offgeo/profile-join-quality.py` is the first `OFF-103` work: it runs against `compile-sangis-roads.py`/`compile-sangis-address-points.py`'s real JSONL output (not raw source bytes the way Group 2's `profile-sources.py` did), so it measures what a downstream compiler stage would actually see. Two passes: road range-side classification (absent/ascending/descending/malformed-one-bound-zero per side, plus an extreme-span flag), and address-point join quality (sentinel/joined/dangling by `ROADSEGID`, joined-by-road-confidence cross-tab, and a coarse numeric range-containment check for joined points).
+`tools/offgeo/profile-join-quality.py` runs against `compile-sangis-roads.py`/`compile-sangis-address-points.py`'s real JSONL output (not raw source bytes the way Group 2's `profile-sources.py` did), so it measures what a downstream compiler stage would actually see. Five passes: road range-side classification (absent/ascending/descending/malformed-one-bound-zero per side, plus an extreme-span flag), address-point join quality (sentinel/joined/dangling by `ROADSEGID`, joined-by-road-confidence cross-tab, and a coarse numeric range-containment check for joined points), `LMIXADDR`/`RMIXADDR` mix-flag distributions, duplicate road geometry, and ZIP consistency between joined address points and their road's `L_ZIP`/`R_ZIP`.
 
 **Real run** (2026-08-24, against the roads/address-points output committed above):
 
@@ -200,6 +200,11 @@ python3 tools/offgeo/profile-join-quality.py   # requires the roads + address-po
 - **Address points (1,151,034 records) joined to the real roads output:** 35.9% unjoined (`ROADSEGID=0` sentinel, expected — condo/unit sub-records), **64.1% joined**, and only **40 dangling** (0.0035% — a `ROADSEGID` that doesn't resolve to any road in this reader's own output; Group 2's raw-source figure was 207/1,222,722 rows against the full unfiltered table, so this smaller number over the smaller coordinate-filtered population is consistent, not a new problem).
 - **New finding, not measurable before both readers existed:** of the 737,732 joined address points, 634,382 (86.0%) join to an `ORDINARY`-confidence road, 103,332 (14.0%) to `FALLBACK`, and only 18 to `EXCLUDED` — i.e. address points overwhelmingly attach to roads this project's own status classification already trusts, a good sign for `road_status.py`'s conservative fallback-not-excluded design.
 - **New finding — range containment:** among joined address points with a usable (non-all-zero) range on their road, **98.3% (725,382) have a house number that falls within the road's own combined low/high bounds**; 12,103 (1.6%) fall outside; 247 joined points had no usable range to check against at all. This is a coarse min/max check, not real side/parity-aware interpolation (that's R4's job) — the 12,103 outside-range points are a real, now-measured population worth carrying into R2's range-repair design, not proof any individual one is a data error (SanGIS ranges are revised over time and a point can predate a range edit).
+- **Mix flags:** `LMIXADDR`/`RMIXADDR` are `N` (no mixed parity) for 99.8% of roads, `Y` for only ~0.16%, blank for ~0.02% — mixed-parity ranges are a real but small population, not a dominant case R4's scorer needs to specially optimize for.
+- **Duplicate geometry:** only 3 groups (6 total segments) out of 164,555 share an exactly identical vertex sequence with another `ROADSEGID` — negligible; SanGIS's own geometry is clean enough that de-duplication (spec.md 6.3) will barely change the byte count.
+- **ZIP consistency:** checked over the full 737,732 joined points (independent of range containment — an earlier version of this script accidentally skipped the ZIP check for the 247 no-range points by coupling it to the range check's early exit; fixed so this count is complete). 733,423 (99.4%) have an `ADDRZIP` matching one side of their road's `L_ZIP`/`R_ZIP`; **4,309 (0.6%) don't**, and 0 were unchecked for a missing ZIP on either side. A real, small locality/ZIP-gap population, plausible near ZIP boundaries that don't line up exactly with road-segment boundaries, not investigated further here.
+
+`OFF-103`'s scope is now essentially complete except the SanGIS<->Census address-range *conflict* check (see the reconciliation section below — that still needs a geometry-based segment join, deliberately not attempted here).
 
 ## Phase R1, Group B — SanGIS<->Census street reconciliation (`OFF-004` cross-source half, `OFF-103` continued)
 
