@@ -1,6 +1,6 @@
 # OffGeo Phase R0 TODO — Public Source and Input-Contract Proof
 
-Status: In progress — Groups 1–6 complete (Group 3 is a small rolling corpus, see notes there; Group 4 was rescoped, see notes there); all groups done, remaining work is the R0 exit-gate items not yet closed (see below)
+Status: Nearly done — all six groups complete (Group 3 is a small rolling corpus, see notes there; Group 4 was rescoped, see notes there). Only two items remain open, both genuinely blocked on R1 (the name-normalization/matching pipeline doesn't exist yet): `OFF-004`'s cross-source precedence proof and the Census-viable-fallback exit-gate bullet. Everything else in this file is closed.
 Last updated: 2026-08-23
 Scope: [roadmap.md §4](./roadmap.md#4-phase-r0--public-source-and-input-contract-proof) (`OFF-001`–`OFF-017`), the first slice named in [roadmap.md §15](./roadmap.md#15-recommended-first-implementation-slice).
 Reference: [spec.md](./spec.md) for source URLs, merge rules, and privacy requirements cited below.
