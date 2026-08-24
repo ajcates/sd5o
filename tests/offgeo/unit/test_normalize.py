@@ -33,6 +33,30 @@ class TextNormalizationTests(unittest.TestCase):
         self.assertEqual(normalize.normalize_text("123 1/2 main st"), "123 1/2 MAIN ST")
 
 
+class StreetCoreNameCanonicalizationTests(unittest.TestCase):
+    def test_strips_leading_zero_from_ordinal_street_numbers(self):
+        # The real cross-source mismatch found by
+        # reconcile-sangis-census-streets.py: SanGIS spells these
+        # zero-padded, Census does not.
+        self.assertEqual(normalize.canonicalize_street_core_name("01ST"), "1ST")
+        self.assertEqual(normalize.canonicalize_street_core_name("02ND"), "2ND")
+        self.assertEqual(normalize.canonicalize_street_core_name("09TH"), "9TH")
+
+    def test_leaves_already_unpadded_ordinal_untouched(self):
+        self.assertEqual(normalize.canonicalize_street_core_name("21ST"), "21ST")
+
+    def test_leaves_non_ordinal_names_untouched(self):
+        self.assertEqual(normalize.canonicalize_street_core_name("main"), "MAIN")
+        self.assertEqual(normalize.canonicalize_street_core_name("First American"), "FIRST AMERICAN")
+
+    def test_does_not_touch_a_bare_leading_zero_number_without_an_ordinal_suffix(self):
+        # Guards the "never touch a house number" scoping note: this
+        # helper only ever receives the street-name field, but staying
+        # narrow (ST/ND/RD/TH literally required) means even a stray
+        # numeric-looking token passed in by mistake is left alone.
+        self.assertEqual(normalize.canonicalize_street_core_name("007"), "007")
+
+
 class UnitStrippingTests(unittest.TestCase):
     def test_strips_trailing_apartment(self):
         self.assertEqual(normalize.strip_unit_designator("123 MAIN ST APT 4"), "123 MAIN ST")

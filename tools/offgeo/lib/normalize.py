@@ -110,7 +110,37 @@ _SUFFIX_ABBREVIATIONS: dict[str, str] = {
     "PLAZA": "PLAZA", "CROSSING": "CROSSING", "POINT": "POINT",
     "PKWY": "PARKWAY",
 }
-SUFFIX_CANON: dict[str, str] = dict(_SUFFIX_ABBREVIATIONS)
+
+# Census TIGER/Line FEATNAMES abbreviations (its own `SUFTYPABRV` field)
+# not covered by SanGIS's two domain tables above -- found by running
+# tools/offgeo/reconcile-sangis-census-streets.py against the real
+# retained archive and checking every `SUFTYPABRV` value that failed to
+# canonicalize (38 distinct tokens, 6,328 of 126,976 non-blank rows,
+# ~5%). These are standard geographic-feature-suffix abbreviations, not
+# SanGIS-domain-table entries, so unlike the block above they are this
+# library's own best-effort spellings rather than a transcription from
+# an official field-domain document -- same standard this project
+# already applied to `FEED_SUFFIX_ALIASES` in
+# tools/offgeo/build-address-index.py (real evidence, human-mapped,
+# explicitly disclosed as such). "TRUCK TRL" maps to the same
+# "TRUCKTRAIL" canonical form SanGIS's own TKTL/TT already use, so a
+# truck trail named in both sources still collapses to one key.
+# Deliberately does NOT include "TRANS LN" or "JEEP TRL" (104 and 3
+# rows) -- their expansions aren't obvious enough to guess confidently;
+# they stay unmapped (canonicalize_suffix returns None) rather than risk
+# asserting a wrong equivalence.
+_CENSUS_SUFFIX_ABBREVIATIONS: dict[str, str] = {
+    "CRK": "CREEK", "RLWY": "RAILWAY", "TRUCK TRL": "TRUCKTRAIL", "RIV": "RIVER",
+    "AQUEDUCT": "AQUEDUCT", "VIS": "VISTA", "WASH": "WASH", "RTE": "ROUTE",
+    "TROLLEY": "TROLLEY", "RDG": "RIDGE", "STRM": "STREAM", "CNL": "CANAL",
+    "VW": "VIEW", "DRIVEWAY": "DRIVEWAY", "CRST": "CREST", "BOUNDARY": "BOUNDARY",
+    "HTS": "HEIGHTS", "ESTS": "ESTATES", "FRK": "FORK", "CHNNL": "CHANNEL",
+    "LNDG": "LANDING", "GRADE": "GRADE", "POINTE": "POINTE", "CYN": "CANYON",
+    "STRIP": "STRIP", "LAGOON": "LAGOON", "PROMENADE": "PROMENADE", "BLF": "BLUFF",
+    "PIER": "PIER", "DITCH": "DITCH", "LK": "LAKE", "PSGE": "PASSAGE",
+    "ESPLANADE": "ESPLANADE", "CUTOFF": "CUTOFF", "WALKWAY": "WALKWAY", "TRCE": "TRACE",
+}
+SUFFIX_CANON: dict[str, str] = {**_SUFFIX_ABBREVIATIONS, **_CENSUS_SUFFIX_ABBREVIATIONS}
 
 
 def normalize_text(text: str) -> str:
@@ -152,6 +182,31 @@ def canonicalize_suffix(token: str) -> str | None:
     """Return the canonical full-word suffix for `token`, or None if
     `token` isn't a recognized street-type suffix."""
     return SUFFIX_CANON.get(token)
+
+
+# Found via tools/offgeo/reconcile-sangis-census-streets.py's real
+# cross-source street-key comparison, not guessed in advance: SanGIS
+# zero-pads single-digit ordinal street numbers ("01ST", "02ND", ...,
+# "09TH" -- 2,018 SanGIS road segments use this form, e.g. downtown San
+# Diego's 1st through 9th Avenue), while Census TIGER/Line spells the
+# same streets "1ST", "2ND", etc. Without stripping this, every one of
+# those streets would silently fail to cross-reference between the two
+# sources -- not a rare edge case, since numbered downtown streets are
+# common addresses. Scoped narrowly (only digits immediately followed by
+# ST/ND/RD/TH) so it can never touch an actual house number, which lives
+# in a separate field/token everywhere this library is used.
+_LEADING_ZERO_ORDINAL_RE = re.compile(r"^0+(\d+(?:ST|ND|RD|TH))$")
+
+
+def canonicalize_street_core_name(name: str) -> str:
+    """Canonicalize the core (non-direction, non-suffix) portion of a
+    street name for cross-source/cross-component matching. Callers that
+    already have raw text should pass it through `normalize_text` first
+    or rely on this function's own internal call -- either is safe since
+    `normalize_text` is idempotent."""
+    text = normalize_text(name)
+    m = _LEADING_ZERO_ORDINAL_RE.match(text)
+    return m.group(1) if m else text
 
 
 _BLOCK_RE = re.compile(r"^(\d+)\s+BLOCK(?:\s+OF)?\s+(.+)$")
