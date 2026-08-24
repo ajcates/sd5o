@@ -1,0 +1,15 @@
+{
+  "name": "sd5o",
+  "private": true,
+  "type": "module",
+  "description": "Static calls-for-service site plus OffGeo build tooling. The shipped browser app (src/, index.html) stays plain no-build ES modules per notes/offgeo/roadmap.md §3; these are dev-only test dependencies, never shipped to the browser.",
+  "scripts": {
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:e2e": "node tests/e2e/run.mjs",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:py": "python3 -m unittest discover -s tests/offgeo/unit -t ."
+  },
+  "devDependencies": {
+    "playwright-core": "1.59.1"
+  }
+}

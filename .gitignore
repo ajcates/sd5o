@@ -5,3 +5,6 @@ index.zip
 # they must never be committed (roadmap.md OFF-016).
 /build/
 __pycache__/
+
+# Dev-only test toolchain (OFF-012): playwright-core, never shipped to the browser.
+/node_modules/
