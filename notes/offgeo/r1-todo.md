@@ -1,6 +1,6 @@
 # OffGeo Phase R1 TODO — Feasibility Compiler and Benchmark
 
-Status: Early — Group A (`OFF-101`, `OFF-102`) is done; Group B (`OFF-103`) is essentially done except one deliberately-deferred piece; `OFF-112` (Group C) is done; `OFF-104`/`OFF-105` (Group D, first pass) are done. Everything else (`OFF-106`–`OFF-111`, `OFF-113`–`OFF-116`) is not started.
+Status: Early — Group A (`OFF-101`, `OFF-102`) is done; Group B (`OFF-103`) is essentially done except one deliberately-deferred piece; `OFF-112` (Group C) is done; `OFF-104`/`OFF-105` (Group D, first pass) are done; `OFF-108`/`OFF-115` (decode-speed half only) are done. Everything else (`OFF-106`, `OFF-107`, `OFF-109`–`OFF-111`, `OFF-113`, `OFF-114`, `OFF-116`) is not started.
 Last updated: 2026-08-25
 Scope: [roadmap.md §5](./roadmap.md#5-phase-r1--feasibility-compiler-and-benchmark) (`OFF-101`–`OFF-116`).
 Reference: [spec.md](./spec.md) for merge rules and quality-gate language cited below; [`tools/offgeo/README.md`](../../tools/offgeo/README.md) for implementation detail, real numbers, and run commands — this file tracks status and links out, it doesn't duplicate the numbers.
@@ -45,30 +45,35 @@ Output: `tools/offgeo/prototype-pack-formats.py`, `tools/offgeo/lib/varint.py` (
 
 Output: `tools/offgeo/prototype-benchmark-reader.py`, `tools/offgeo/lib/interpolate.py` (+ `tests/offgeo/unit/test_interpolate.py`), `tools/offgeo/lib/packformat.py` (extracted from `OFF-104`'s script so both prototypes share one verified codec, + `tests/offgeo/unit/test_packformat.py`). Real numbers in `tools/offgeo/README.md`'s "block-partitioned benchmark reader" section.
 
-## Not started — `OFF-106`–`OFF-111`, `OFF-113`–`OFF-116`
+- [x] **OFF-108/OFF-115 (decode-speed half) — real-JS decode-speed comparison.** `tools/offgeo/prototype-js/` (`varint.mjs`, `packformat.mjs` — a from-scratch JS port of the decoder, byte-layout-verified independent of Python via a hand-built known-good block, not just trusted to match; `benchmark.mjs`) decodes the *exact same block bytes and 2,000-key sample* the Python benchmark used, in real Node V8 (`npm run test:offgeo-js` for the 9 unit tests). Settles `OFF-105`'s open question in both directions at once: the custom format decodes **~17x faster in V8 than in CPython** (most of the earlier slowdown really was a Python-interpreter artifact) — but is still **~130–135x slower than SQLite** even in real JS (4,576.67 μs mean / 3,400.63 median / 9,376.78 p95, vs SQLite's 34–36 μs), so "it was just Python's fault" is only half true. Explicitly a first pass with an unoptimized, direct-port JS decoder (allocates per-record, no typed-array batch decode) — a meaningfully faster JS implementation plausibly exists but isn't built or credited here. SQLite's own browser-loading cost (sql.js WASM bundle size/load time) remains untested, the other open half of `OFF-108`/`OFF-115`.
 
-(`OFF-112` moved to Group C, `OFF-104`/`OFF-105` moved to Group D above — all done.)
+Output: `tools/offgeo/prototype-js/varint.mjs`, `packformat.mjs`, `benchmark.mjs` (+ `varint.test.mjs`, `packformat.test.mjs`, wired into `npm run test:offgeo-js`). `prototype-benchmark-reader.py` extended to export `r1-pack-blocks.bin`/`r1-pack-manifest.json` for this comparison. Real numbers in `tools/offgeo/README.md`'s "real-JS decode-speed comparison" section, including the full three-way (Python custom / JS custom / SQLite) table.
+
+## Not started or partial — `OFF-106`, `OFF-107`, `OFF-108`/`OFF-115` (partial), `OFF-109`–`OFF-111`, `OFF-113`, `OFF-114`, `OFF-116`
+
+(`OFF-112` moved to Group C; `OFF-104`, `OFF-105`, and `OFF-108`/`OFF-115`'s decode-speed half moved to Group D above — all done.)
 
 None of the remaining R1 work items have been started. Listed here (not duplicated from roadmap.md) so this file stays the single place to check R1 status without re-reading the full roadmap:
 
 - [ ] **OFF-106 — Run the real-address coverage benchmark.** Needs a real parser/normalizer run against the real Group 3 calls-fixture corpus (`tests/offgeo/fixtures/addresses.json`), not just synthetic ground truth the way `OFF-105`'s precursor signal used. Note the map-prototype's `build-address-index.py`/`geocoder.js` already did a *much* smaller, feature-scoped version of this for the map UI, not a substitute for the real benchmark.
 - [ ] **OFF-107 — Run held-out spatial validation.**
-- [ ] **OFF-108 — Benchmark the target device.** Some informal signal already exists (peak RSS/wall time per reader run, recorded in `tools/offgeo/README.md`), but that's this dev host, not a formal reference-device benchmark, and it measures the readers, not decode/import/query latency of an actual compiled pack (which doesn't exist yet).
+- [ ] **OFF-108 — Benchmark the target device (decode-speed half done, device-benchmark half not).** `tools/offgeo/prototype-js/benchmark.mjs` answered the decode-speed-in-real-JS question (see below) — but only in Node/V8 on this dev host, not the actual reference Android/browser device `roadmap.md` §5 asks for, and only for decode, not full pack install/import/peak-memory timing (no actual compiled pack exists yet).
 - [ ] **OFF-109 — Decide format/runtime tools.**
 - [ ] **OFF-110 — Review feasibility thresholds.**
 - [ ] **OFF-111 — Benchmark integrity paths.**
 - [ ] **OFF-113 — Prototype intersection topology.**
 - [ ] **OFF-114 — Spike IndexedDB failure modes.**
-- [ ] **OFF-115 — Test the static host contract.**
+- [ ] **OFF-115 — Test the static host contract (decode-speed half done, host-contract half not).** The other still-open half: SQLite's own browser-loading cost (a WASM build like sql.js — bundle size, load time, fit with this project's no-build-step static-JS constraint) is untested; so is actual static-host behavior (content-type, caching, range support) for either candidate.
 - [ ] **OFF-116 — Measure location uncertainty UX inputs.**
 
 ## R1 exit gate — feasible design selected (roadmap.md §5)
 
-Not evaluated yet — every bullet in the roadmap's own R1 exit-gate list depends on work items not yet started (`OFF-106` onward). Revisit once the real coverage/accuracy benchmark (`OFF-106`/`OFF-107`) and a browser-side prototype (`OFF-108`/`OFF-115`) exist — the latter especially, given `OFF-105` found the custom format's *Python* decoder is dramatically slower than SQLite and that verdict may or may not hold in real JS.
+Not evaluated yet — every bullet in the roadmap's own R1 exit-gate list depends on work items not yet started (`OFF-106`, `OFF-107`, `OFF-109`–`OFF-111` in particular). The `OFF-108`/`OFF-115` decode-speed question is now answered (custom format ~130–135x slower than SQLite even in real V8 — see Group D above), which is real progress toward the format decision but not the decision itself: SQLite's own browser-loading cost (sql.js WASM) is still untested, and `OFF-109` hasn't been recorded yet.
 
 ## Suggested execution order
 
-1. `OFF-108`/`OFF-115` (browser-loading feasibility) just became more urgent, not less: `OFF-105`'s Python benchmark leaves genuinely open whether the custom format's speed disadvantage is a Python-only artifact or a real one — only an actual JS prototype (of both the custom decoder and a WASM SQLite build like sql.js) can settle `OFF-109`'s format decision honestly.
-2. `OFF-106` (real-address coverage benchmark) needs a real parser/normalizer run against the Group 3 fixture corpus, building on `OFF-105`'s lookup/interpolation pipeline (which already proved out end-to-end against synthetic ground truth) rather than starting from scratch.
-3. `OFF-111` and `OFF-114` are host/device feasibility spikes that don't depend on further format work and could run in parallel.
-4. `OFF-113` (intersection topology) and `OFF-116` (location UX inputs) are lower-urgency and can trail the rest.
+1. Test SQLite's browser-loading cost (sql.js WASM bundle size, load time, fit with the no-build-step static-JS constraint) — the remaining open half of `OFF-108`/`OFF-115`, and the natural next step now that the decode-speed half has a real, if unflattering for the custom format, answer.
+2. `OFF-109` (decide format/runtime tools) can reasonably be attempted once (1) lands — `OFF-104`/`OFF-105`/`OFF-108` together already give a real size-vs-speed tradeoff to record a decision against, even if an optimized JS decoder isn't built.
+3. `OFF-106` (real-address coverage benchmark) needs a real parser/normalizer run against the Group 3 fixture corpus, building on `OFF-105`'s lookup/interpolation pipeline (which already proved out end-to-end against synthetic ground truth) rather than starting from scratch.
+4. `OFF-111` and `OFF-114` are host/device feasibility spikes that don't depend on further format work and could run in parallel.
+5. `OFF-113` (intersection topology) and `OFF-116` (location UX inputs) are lower-urgency and can trail the rest.

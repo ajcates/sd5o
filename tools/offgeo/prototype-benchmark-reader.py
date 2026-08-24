@@ -273,6 +273,35 @@ def load_ground_truth_address_points(road_records_by_id: dict[int, dict]) -> lis
     return ground_truth
 
 
+BLOCKS_EXPORT_PATH = REPO_ROOT / "build/offgeo-sources/r1-pack-blocks.bin"
+MANIFEST_EXPORT_PATH = REPO_ROOT / "build/offgeo-sources/r1-pack-manifest.json"
+
+
+def export_pack_for_js_benchmark(pack: BlockPartitionedPack, sample_keys: list[tuple]) -> None:
+    """Write the block bytes and a small manifest so
+    tools/offgeo/prototype-js/benchmark.mjs can decode the *identical*
+    bytes this Python reader just built and timed -- a fair same-data
+    comparison of decode speed across languages/engines, not a separate
+    JS-side rebuild that could subtly differ."""
+    offsets = []
+    cursor = 0
+    with BLOCKS_EXPORT_PATH.open("wb") as f:
+        for block in pack.blocks:
+            f.write(block)
+            offsets.append({"offset": cursor, "length": len(block)})
+            cursor += len(block)
+
+    manifest = {
+        "blockOffsets": offsets,
+        # JSON object keys must be strings -- join the 4-tuple with a
+        # separator that can't appear in a canonicalized street-key
+        # component (those are uppercase-normalized text/None).
+        "index": {"\x1f".join(k): v for k, v in pack.index.items()},
+        "sampleKeys": ["\x1f".join(k) for k in sample_keys],
+    }
+    MANIFEST_EXPORT_PATH.write_text(json.dumps(manifest))
+
+
 def main() -> None:
     if not ROADS_PATH.exists():
         raise SystemExit(f"{ROADS_PATH} missing -- run compile-sangis-roads.py first")
@@ -297,6 +326,10 @@ def main() -> None:
     sample_keys = random.Random(20260825).sample(all_keys, min(2000, len(all_keys)))
     lookup_us = benchmark_lookup_latency(pack, sample_keys)
     print(f"  {lookup_us:.2f} us/lookup (fresh block decode every time, no cache)")
+
+    print("\nExporting pack blocks + manifest for the JS decode-speed comparison (OFF-108/OFF-115)...")
+    export_pack_for_js_benchmark(pack, sample_keys)
+    print(f"  {BLOCKS_EXPORT_PATH} ({BLOCKS_EXPORT_PATH.stat().st_size:,} bytes), {MANIFEST_EXPORT_PATH}")
 
     print("\nLoading ground-truth address points (already known to be within their road's range)...")
     ground_truth = load_ground_truth_address_points(road_records_by_id)

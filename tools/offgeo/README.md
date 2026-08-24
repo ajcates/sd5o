@@ -283,3 +283,26 @@ python3 tools/offgeo/prototype-benchmark-reader.py   # requires the roads + addr
 - **Ground-truth geocode accuracy (2,000 real SanGIS address points already known to sit within their road's range, resolved using *only* street name + house number — the real `ROADSEGID` is never given to the geocode function):** **100% matched** (every sample resolved to at least one containing segment), **median error 35.8 m, p95 error 215.5 m** against the point's own real surveyed coordinate. This is a genuine, if simplified, end-to-end accuracy signal — the interpolation math and the whole lookup→range-select→interpolate pipeline actually produce usable coordinates, not just a passing unit test. Explicitly a precursor signal for `OFF-106`/`OFF-107`, not a substitute: side selection when both L/R ranges contain a house number has no real parity logic (arbitrary left-preference, since SanGIS carries no per-side parity flag the way Census does), there's no fuzzy/nearest fallback, and tie-breaking among multiple matching segments is by lowest `ROADSEGID`, not geometric plausibility — all disclosed limitations, not silently assumed away.
 
 The size comparison from `OFF-104` (custom ~2.5x smaller than SQLite) stands unchanged — this section only corrects the *speed* claim, and only for this Python-side prototype's decode implementation.
+
+## Phase R1, Group D continued — real-JS decode-speed comparison (`OFF-108`/`OFF-115`, partial)
+
+```sh
+python3 tools/offgeo/prototype-benchmark-reader.py   # exports build/offgeo-sources/r1-pack-blocks.bin + r1-pack-manifest.json
+node tools/offgeo/prototype-js/benchmark.mjs          # decodes the identical bytes in real V8, same 2000-key sample
+```
+
+`OFF-105`'s own writeup left one question explicitly open: was the custom format's ~2,300x-slower-than-SQLite Python result a CPython-interpreter artifact, or a real property of the format? This settles it, honestly and with real numbers on both sides. `tools/offgeo/prototype-benchmark-reader.py` now exports the exact block bytes and the exact 2,000-key seeded sample it benchmarked in Python; `tools/offgeo/prototype-js/packformat.mjs` is a from-scratch JS port of `lib/packformat.py`'s decoder (byte-layout-verified against a hand-built known-good block in `packformat.test.mjs`, independent of the Python pipeline — 9 JS tests total between it and `varint.mjs`, run via `npm run test:offgeo-js`), and `prototype-js/benchmark.mjs` decodes those identical bytes for the identical sample in real Node V8 — not a browser, but the same JS engine Chromium uses, JIT included, a fair proxy for this specific question.
+
+**Real result — a genuine three-way comparison on the same underlying data:**
+
+| Reader | μs/lookup | vs. Python custom | vs. SQLite |
+| --- | --- | --- | --- |
+| Custom format, Python (`OFF-105`) | 78,389–78,899 (mean) | — | ~2,300x slower |
+| **Custom format, real V8/Node** | **4,576.67 mean / 3,400.63 median / 9,376.78 p95** | **~17x faster** | **~130–135x slower** |
+| SQLite, Python (`OFF-104`) | 34–36 | ~2,300x faster | — |
+
+Both halves of the open question resolve at once, in different directions: **most of the earlier slowdown really was a Python-interpreter artifact** — the identical byte layout decodes about 17x faster in V8 than in CPython, a genuinely large, real engine effect. But **the custom format is still not competitive with SQLite even in real JS** — about 130–135x slower on this same cold single-block-decode benchmark, not the near-parity a "it was just Python's fault" story might have hoped for. A 3.4–9.4 ms median-to-p95 lookup is slow enough to matter for an interactive geocode-while-scrolling UI, even though it comfortably beats a human's perception threshold for a single one-off lookup.
+
+This is real, honest, and still incomplete evidence for `OFF-109`'s decision, not a verdict: the JS decoder here is a direct, unoptimized port (allocates a new object/array per record, no typed-array batch decode, no lazy/partial-record parsing) — plausibly a meaningfully faster JS implementation exists (batch-decoding into typed-array columns rather than per-record objects, or skipping full-record parsing when only checking a range), but that optimization work doesn't exist yet and isn't credited here. SQLite's own browser-loading cost (a WASM build like sql.js — bundle size, load time, whether it fits this project's no-build-step static-JS constraint at all) is also still untested — that's the other still-open half of `OFF-108`/`OFF-115`, not resolved by this decode-speed number alone.
+
+Artifacts: `build/offgeo-sources/r1-pack-blocks.bin`, `r1-pack-manifest.json` (Python-exported, gitignored), `build/offgeo-sources/r1-js-decode-benchmark-report.json` (JS-generated, gitignored). Both reproducible by re-running the two commands above in order.

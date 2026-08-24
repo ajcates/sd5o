@@ -7,7 +7,8 @@
     "test:unit": "node --test tests/unit/*.test.mjs",
     "test:e2e": "node tests/e2e/run.mjs",
     "test": "npm run test:unit && npm run test:e2e",
-    "test:py": "python3 -m unittest discover -s tests/offgeo/unit -t ."
+    "test:py": "python3 -m unittest discover -s tests/offgeo/unit -t .",
+    "test:offgeo-js": "node --test tools/offgeo/prototype-js/*.test.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.59.1"
