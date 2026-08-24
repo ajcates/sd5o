@@ -1,7 +1,7 @@
 # OffGeo Phase R1 TODO — Feasibility Compiler and Benchmark
 
-Status: Early — Group A (`OFF-101`, `OFF-102`) is done; Group B (`OFF-103`) is essentially done except one deliberately-deferred piece; `OFF-112` (Group C) is also done. Everything else (`OFF-104`–`OFF-111`, `OFF-113`–`OFF-116`) is not started.
-Last updated: 2026-08-24
+Status: Early — Group A (`OFF-101`, `OFF-102`) is done; Group B (`OFF-103`) is essentially done except one deliberately-deferred piece; `OFF-112` (Group C) is done; `OFF-104` (Group D, first-pass) is done. Everything else (`OFF-105`–`OFF-111`, `OFF-113`–`OFF-116`) is not started.
+Last updated: 2026-08-25
 Scope: [roadmap.md §5](./roadmap.md#5-phase-r1--feasibility-compiler-and-benchmark) (`OFF-101`–`OFF-116`).
 Reference: [spec.md](./spec.md) for merge rules and quality-gate language cited below; [`tools/offgeo/README.md`](../../tools/offgeo/README.md) for implementation detail, real numbers, and run commands — this file tracks status and links out, it doesn't duplicate the numbers.
 
@@ -31,13 +31,20 @@ Output: `tools/offgeo/profile-join-quality.py`, `tools/offgeo/reconcile-sangis-c
 
 Output: `tools/offgeo/prototype-community-disambiguation.py`. Real numbers in `tools/offgeo/README.md`'s "community disambiguation" section.
 
-## Not started — `OFF-104`–`OFF-111`, `OFF-113`–`OFF-116`
+## Group D — Compact pack-format prototyping — first pass done 2026-08-25
 
-(`OFF-112` moved to Group C above, done.)
+- [x] **OFF-104 — Prototype compact representations (first pass).** `tools/offgeo/prototype-pack-formats.py`: encodes the real roads dataset into a custom binary block format (`tools/offgeo/lib/varint.py`'s uvarint/zigzag-svarint, shared string pool, delta-encoded geometry) and SQLite (normalized schema, real indexes) — identical logical content in both, decode-verified byte-exact against the source for the custom format. Real run: custom format ~9.6 MiB gzip vs SQLite ~24.1 MiB gzip (~2.5x smaller); lookup latency 2.33 μs (custom, in-memory) vs 35.69 μs (SQLite, indexed) — explicitly disclosed as an unfair comparison since the custom format's benchmark fully decodes everything first, unlike SQLite's true partial-read B-tree.
+  - **Not done yet, explicitly out of scope for this pass:** PBF (no Python stdlib protobuf; SQLite alone satisfies "at least one maintained alternative"). Browser-loading feasibility for either candidate (would SQLite need a WASM runtime like sql.js in this no-build-step static-JS app — that's `OFF-108`/`OFF-115`). A block-partitioned/decode-only-what's-needed reader for the custom format, which is `OFF-105`'s actual job, not built here — this pass proves size and correctness, not the real access pattern.
+  - **Real early signal:** roads geometry/ranges alone (no address-range interpolation refinement, no Census fallback merge, no alias/fuzzy index, no intersection topology) already gzips to ~9.6 MiB in the custom format — well under the ≤30 MiB R1 exit-gate budget so far, but not a final size claim since most of the pack's eventual content isn't in this prototype yet.
+
+Output: `tools/offgeo/prototype-pack-formats.py`, `tools/offgeo/lib/varint.py` (+ `tests/offgeo/unit/test_varint.py`). Real numbers in `tools/offgeo/README.md`'s "compact pack-format prototyping" section.
+
+## Not started — `OFF-105`–`OFF-111`, `OFF-113`–`OFF-116`
+
+(`OFF-112` moved to Group C, `OFF-104` moved to Group D above — both done.)
 
 None of the remaining R1 work items have been started. Listed here (not duplicated from roadmap.md) so this file stays the single place to check R1 status without re-reading the full roadmap:
 
-- [ ] **OFF-104 — Prototype compact representations.** Compare the custom block format against at least one maintained SQLite/PBF-style alternative.
 - [ ] **OFF-105 — Implement a benchmark reader.** Exact street/range lookup plus polyline interpolation outside the production UI.
 - [ ] **OFF-106 — Run the real-address coverage benchmark.** Needs a geocoder prototype run against the real Group 3 calls-fixture corpus (`tests/offgeo/fixtures/addresses.json`) — note the map-prototype's `build-address-index.py`/`geocoder.js` already did a *much* smaller, feature-scoped version of this for the map UI, not a substitute for the real benchmark.
 - [ ] **OFF-107 — Run held-out spatial validation.**
@@ -56,7 +63,7 @@ Not evaluated yet — every bullet in the roadmap's own R1 exit-gate list depend
 
 ## Suggested execution order
 
-1. `OFF-104` (compact representation prototyping) is the biggest open decision blocking most of the rest of R1 (`OFF-105`–`OFF-111` all depend on a candidate format existing).
-2. `OFF-106` (real-address coverage benchmark) needs a geocoder prototype, which needs `OFF-104`/`OFF-105` first (or at minimum a throwaway lookup structure — the map-prototype's `geocoder.js` is *not* that prototype, see the note above).
-3. `OFF-108`, `OFF-111`, `OFF-114`, `OFF-115` are host/device/browser feasibility spikes that don't depend on the format decision and could run in parallel with `OFF-104`.
+1. `OFF-105` (benchmark reader) is the natural next step now that `OFF-104`'s first pass has a candidate custom format with a verified decoder — building the block-partitioned, decode-only-what's-needed reader is what would make the lookup-latency comparison against SQLite fair, and unblocks `OFF-106`.
+2. `OFF-106` (real-address coverage benchmark) needs a geocoder prototype, which needs `OFF-105` first (or at minimum a throwaway lookup structure — the map-prototype's `geocoder.js` is *not* that prototype, see the note above).
+3. `OFF-108`, `OFF-111`, `OFF-114`, `OFF-115` are host/device/browser feasibility spikes that don't depend on further format work and could run in parallel — `OFF-115` in particular (would SQLite need a WASM runtime like sql.js in this no-build-step app) is the missing half of `OFF-104`'s own format comparison.
 4. `OFF-113` (intersection topology) and `OFF-116` (location UX inputs) are lower-urgency and can trail the rest.
