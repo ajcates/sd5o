@@ -1,6 +1,6 @@
 # OffGeo Phase R0 TODO — Public Source and Input-Contract Proof
 
-Status: In progress — Groups 1–4 complete (Group 3 is a small rolling corpus, see notes there; Group 4 was rescoped, see notes there)
+Status: In progress — Groups 1–5 complete (Group 3 is a small rolling corpus, see notes there; Group 4 was rescoped, see notes there; Group 6 remains)
 Last updated: 2026-08-23
 Scope: [roadmap.md §4](./roadmap.md#4-phase-r0--public-source-and-input-contract-proof) (`OFF-001`–`OFF-017`), the first slice named in [roadmap.md §15](./roadmap.md#15-recommended-first-implementation-slice).
 Reference: [spec.md](./spec.md) for source URLs, merge rules, and privacy requirements cited below.
@@ -56,15 +56,11 @@ Output: [`notes/offgeo/index-html-audit.md`](./index-html-audit.md) (privacy aud
 
 - [x] **New — Calls map prototype.** A slide-down Leaflet map (self-hosted, no raster tiles — see [`notes/offgeo/map-prototype.md`](./map-prototype.md) for why) showing SanGIS road-line geometry and one age-pulsing marker per geocodable call, with tap-to-scroll-and-highlight into the existing table. Built on a small prototype offline geocoder (`tools/offgeo/build-address-index.py`, community-scoped exact-or-nearest address lookup) and a roads-geometry extractor (`tools/offgeo/build-roads-geometry.py`, new `.shp` reader in `tools/offgeo/lib/shp.py`). Introduces one new build-time-only dependency, PROJ's `cs2cs` (`pkg install proj`), after a hand-rolled coordinate transform was found to be wrong by ~1,400 km against a known address. Verified live: 31/46 calls geocoded, tap-to-highlight confirmed in a real headless-Chromium run. Explicitly not the real R1-R4 geocoder — see the note's non-goals section.
 
-## Group 5 — Feed adapter contract
+## Group 5 — Feed adapter contract — done 2026-08-23
 
-- [ ] **OFF-011 — Define the calls-feed adapter contract.** Specify, as a written contract (not yet code):
-  - Distinct error categories: feed 401/403, CORS failure, timeout, schema mismatch — kept separate from future pack-load errors.
-  - Schema validation rules for the feed payload.
-  - One-snapshot caching behavior (source timestamp vs. local timestamp) and the stale/hide/purge policy.
-  - A production-safe credential path: if the feed truly requires a secret, a same-origin server/serverless proxy under this project's control; otherwise, use the source's documented public-client credential. The current `index.html` uses a third-party CORS proxy (`api.cors.syrins.tech`) with an embedded function key — call this out explicitly as not meeting the "no secret in shipped source" bar, since URL-encoding a key through a third-party proxy is not protection.
+- [x] **OFF-011 — Define the calls-feed adapter contract.** [`notes/offgeo/feed-adapter-contract.md`](./feed-adapter-contract.md): six distinct feed error categories (`network`/`timeout`/`proxy_error`/`upstream_auth`/`invalid_json`/`schema_mismatch`), kept separate from future pack-load errors; per-payload and per-event schema validation (malformed individual events are dropped and counted, not fatal to the batch); one-snapshot caching grounded in `spec.md` §12.431's source-timestamp/local-timestamp/6h-hide/24h-purge policy, plus a real defect found here that isn't in `spec.md` — the per-event `localStorage` cache (`calls-list.js`'s `annotateWithCache`) never purges entries for calls no longer in the feed, growing unbounded. Live-verified finding: the Azure Function feed sends no CORS headers at all (checked directly with `curl -H "Origin: ..."`), so a relay is structurally mandatory, exactly as the user framed it going in — the actual gap is that the current relay (`api.cors.syrins.tech`) is third-party and doesn't hide the embedded function key from shipped source, the Network tab, or the proxy operator. Recommendation: a small serverless relay under this project's own control holding the key server-side; noted that Surge (`CNAME` → `sd50.surge.sh`) has no server-side execution, so this can't be literally same-origin without a hosting change, and that the exit-gate bar ("no secret recoverable from browser source") doesn't actually require same-origin, only that the key never ships client-side. Design only — the relay is not built and the current key is still live/exposed; a follow-up implementation ticket is needed before this can be called production-safe.
 
-Output: written feed-adapter contract, plus an explicit finding on the current proxy/key setup and what replaces it.
+Output: [`notes/offgeo/feed-adapter-contract.md`](./feed-adapter-contract.md) — error taxonomy, schema validation rules, caching/stale/hide/purge policy, and the credential/CORS finding plus recommended replacement design.
 
 ## Group 6 — Tooling and browser feasibility
 
@@ -81,6 +77,7 @@ Output: recorded toolchain decision with run commands, and the capability/suppor
 - [x] Initial sanitized address fixture corpus with expected parse categories (`tests/offgeo/fixtures/addresses.json`) *(small rolling corpus — 2 feed moments so far, see Group 3)*
 - [x] Feed-community crosswalk report (`tests/offgeo/fixtures/community-crosswalk.json`)
 - [ ] Current-app privacy migration plan
+- [x] Feed-adapter contract and credential/CORS finding (`notes/offgeo/feed-adapter-contract.md`)
 - [ ] Browser capability/support matrix
 - [ ] Selected module/test setup
 - [x] Content-addressed source retention (`build/offgeo-sources/`) + build-host **disk** budget *(RAM budget deferred to R1 — nothing parses the data yet)*
@@ -96,8 +93,8 @@ Output: recorded toolchain decision with run commands, and the capability/suppor
 - [ ] Source notices are ready to place in the pack manifest and UI. *(Attribution text captured in the lock file, not yet drafted as UI copy.)*
 - [x] The fixture corpus covers ≥95% of address syntax categories seen in a sampled calls payload; the rest are counted and documented. *(100% of the current 50-address sample classified into a real category, zero fell to the malformed catch-all; categories absent from the payload — hundred-block, malformed, non-address text, etc. — are explicitly listed as not-yet-observed rather than silently omitted. Corpus is still small and rolling — see Group 3.)*
 - [ ] The existing geocoder/location storage leaks have a precise removal/migration test plan.
-- [ ] Feed auth failure, pack failure, storage failure, and permission failure have distinct contracts.
-- [ ] The feed path has a production-safe credential/CORS design; no secret recoverable from browser source, URLs, caches, or diagnostics.
+- [x] Feed auth failure, pack failure, storage failure, and permission failure have distinct contracts. *(`notes/offgeo/feed-adapter-contract.md` §1 — six feed error categories, kept distinct from pack errors.)*
+- [x] The feed path has a production-safe credential/CORS design; no secret recoverable from browser source, URLs, caches, or diagnostics. *(Design recorded in `feed-adapter-contract.md` §4 — the design meets the bar; the shipped app does not yet, since the relay isn't built and the key is still live in `calls-list.js`. Do not read this checkbox as "the leak is fixed.")*
 - [x] Exact source bytes stay reproducible after an upstream weekly URL changes; low build-host space fails cleanly before extraction. *(The changed-checksum guard was tested directly by locking a wrong checksum and confirming the fetch aborts rather than silently accepting new bytes; the preflight free-space check runs before every download.)*
 
 ## Suggested execution order
