@@ -1,6 +1,6 @@
 # OffGeo build tooling
 
-Build-time tooling for the OffGeo offline geocoder. See [`../../notes/offgeo/roadmap.md`](../../notes/offgeo/roadmap.md) for the phase plan and [`../../notes/offgeo/spec.md`](../../notes/offgeo/spec.md) for the product/format requirements. Phase R0 (source pinning/profiling/fixtures/audits, `OFF-001`–`OFF-017`) is done — see [`../../notes/offgeo/todo.md`](../../notes/offgeo/todo.md) for the closed checklist. This directory now also carries the start of **Phase R1, Group A** (`OFF-101`/`OFF-102`, thin source readers and shared normalization) — see the section near the bottom of this file.
+Build-time tooling for the OffGeo offline geocoder. See [`../../notes/offgeo/roadmap.md`](../../notes/offgeo/roadmap.md) for the phase plan and [`../../notes/offgeo/spec.md`](../../notes/offgeo/spec.md) for the product/format requirements. Phase R0 (source pinning/profiling/fixtures/audits, `OFF-001`–`OFF-017`) is done — see [`../../notes/offgeo/todo.md`](../../notes/offgeo/todo.md) for the closed checklist. Phase R1 is underway — see [`../../notes/offgeo/r1-todo.md`](../../notes/offgeo/r1-todo.md) for status/checklist (Group A/B done, `OFF-104` onward not started) and the sections below for real numbers and run commands.
 
 ## Fetching and pinning sources
 

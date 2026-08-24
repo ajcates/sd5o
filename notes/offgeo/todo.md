@@ -2,7 +2,7 @@
 
 Status: Nearly done — all six groups complete (Group 3 is a small rolling corpus, see notes there; Group 4 was rescoped, see notes there). One item remains genuinely open: the Census-viable-fallback exit-gate bullet, which still needs real merge logic (R2), not just profiling. `OFF-004`'s cross-source precedence proof, previously blocked on R1's normalization/matching pipeline, now has real R1 evidence — see [`tools/offgeo/README.md`](../../tools/offgeo/README.md)'s "SanGIS<->Census street reconciliation" section: 75.7% of SanGIS street names have a same-named Census counterpart, and 4,687 Census-only range-bearing street keys (15,076 TLIDs) are the measured coverage-gain answer. Name-level only — address-range conflict detection between matched streets still needs a geometry-based segment join, not done yet.
 Last updated: 2026-08-24 (R1 street-reconciliation cross-reference added; R0 itself unchanged)
-Scope: [roadmap.md §4](./roadmap.md#4-phase-r0--public-source-and-input-contract-proof) (`OFF-001`–`OFF-017`), the first slice named in [roadmap.md §15](./roadmap.md#15-recommended-first-implementation-slice).
+Scope: [roadmap.md §4](./roadmap.md#4-phase-r0--public-source-and-input-contract-proof) (`OFF-001`–`OFF-017`), the first slice named in [roadmap.md §15](./roadmap.md#15-recommended-first-implementation-slice). R1 work (`OFF-101`+) is now underway — see [r1-todo.md](./r1-todo.md).
 Reference: [spec.md](./spec.md) for source URLs, merge rules, and privacy requirements cited below.
 
 Nothing here is implementation of the compiler/runtime — R0 only proves the sources exist, are stable, and can be automated safely, and sets up the tooling and safety nets the rest of the roadmap depends on.
