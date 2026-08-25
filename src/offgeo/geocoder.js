@@ -3,9 +3,7 @@
  * pack fetch/decode/geocode work in a Web Worker -- decoding all
  * 164,555 records takes roughly a second even in a JIT-warmed V8, and
  * doing that inline on the main thread froze the page for that whole
- * time (found live against the real deployment). Same public API as
- * before this fix (`geocode(address)`, `getRoadLinesNear(bounds)`), so
- * map-view.js didn't need to change.
+ * time (found live against the real deployment).
  *
  * v0 scope, unchanged from before: SanGIS Roads-All only (no Census
  * fallback merge), exact address-range containment only (no fuzzy/
@@ -50,11 +48,4 @@ function call(method, args) {
  * @returns {Promise<{lat:number, lon:number, confidence:'ORDINARY'|'FALLBACK'|'EXCLUDED', reason:string}|null>} */
 export function geocode(address) {
   return call("geocode", [address]);
-}
-
-/** ORDINARY-confidence road-line geometry whose bounding box overlaps
- * `bounds` (`{minLat, maxLat, minLon, maxLon}`), for the map's visual
- * road backdrop. Returns an array of `[lat, lon]`-pair arrays. */
-export function getRoadLinesNear(bounds) {
-  return call("getRoadLinesNear", [bounds]);
 }

@@ -1,11 +1,26 @@
 import { Component, html } from "../framework/core.js";
-import { geocode, getRoadLinesNear } from "../offgeo/geocoder.js";
+import { geocode } from "../offgeo/geocoder.js";
 import { ageMinutes } from "./format.js";
 import { loadLeaflet } from "./leaflet-loader.js";
 
 const OPEN_ANIMATION_MS = 340;
 const NO_PULSE_AFTER_MINUTES = 120;
-const ROADS_REFRESH_DEBOUNCE_MS = 350;
+
+// OpenStreetMap's tile server, fetched live from the visitor's own
+// browser -- a different usage pattern from bulk-mirroring tiles as
+// static files (which the earlier custom road-line-only map explicitly
+// avoided, see notes/offgeo/map-prototype.md), acceptable at this
+// project's low request volume under OSM's tile usage policy
+// (https://operations.osmfoundation.org/policies/tiles/). A deliberate
+// trade-off, not an oversight: this makes map tiles a live, non-private,
+// non-offline-capable dependency (every open of the map panel requests
+// tiles from osm.org, and the map can't render at all with the pack's
+// own network unavailable) -- accepted in exchange for a real,
+// recognizable basemap instead of hand-drawn road lines with no
+// context. Attribution below is required by OSM's ODbL license, not
+// optional styling.
+const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 /** Age -> pulse animation parameters. Newer calls pulse faster, bigger,
  * and more opaquely; the effect fades out and stops entirely once a call
@@ -21,16 +36,16 @@ function pulseParamsForAge(minutes) {
   };
 }
 
-/** Owns the slide-down map panel: a Leaflet map with no raster basemap
- * (see notes/offgeo/index-html-audit.md's map-prototype section for why --
- * SanGIS road-line geometry is drawn instead), one marker per geocodable
- * call with an age-scaled pulse, and tap-to-select wired back to the calls
- * table via props.onSelectEvent.
+/** Owns the slide-down map panel: a Leaflet map on a live OpenStreetMap
+ * tile basemap, one marker per geocodable call with an age-scaled
+ * pulse, and tap-to-select wired back to the calls table via
+ * props.onSelectEvent.
  *
- * Leaflet and the real OffGeo pack (../offgeo/geocoder.js -- both
- * geocoding and the road-line backdrop below read from the one pack) are
- * loaded lazily on first open, not on page load -- most visits won't open
- * the map, and the pack alone is ~10MB gzip.
+ * Leaflet and the real OffGeo pack (../offgeo/geocoder.js, used only
+ * for geocoding here -- road-line/label rendering was removed once a
+ * real tile basemap made it redundant) are loaded lazily on first
+ * open, not on page load -- most visits won't open the map, and the
+ * pack alone is ~10MB gzip.
  *
  * This component deliberately never re-renders after its first mount: a
  * second `render()` call would replace #map-canvas and destroy the live
@@ -44,9 +59,6 @@ export class MapView extends Component {
     this.hasInitializedMap = false;
     this.leafletMap = null;
     this.markersLayer = null;
-    this.roadsLayer = null;
-    this.roadsRefreshTimer = null;
-    this.roadsRequestSeq = 0;
     this.latestEvents = [];
 
     this.toggleButton = document.createElement("button");
@@ -85,73 +97,12 @@ export class MapView extends Component {
 
     const L = await loadLeaflet();
     const canvas = this.root.querySelector("#map-canvas");
-    // preferCanvas: road lines can be a couple thousand polylines at
-    // once (see getRoadLinesNear's own cap) -- Leaflet's default SVG
-    // renderer gives each one its own DOM node, which is real,
-    // measurable jank at that count; canvas draws them all into one
-    // element instead.
-    this.leafletMap = L.map(canvas, { attributionControl: false, preferCanvas: true }).setView([32.9, -117.0], 9);
-    L.control
-      .attribution({ prefix: "Leaflet" })
-      .addAttribution("Roads: SanGIS")
-      .addTo(this.leafletMap);
+    this.leafletMap = L.map(canvas, { attributionControl: false }).setView([32.9, -117.0], 9);
+    L.tileLayer(OSM_TILE_URL, { attribution: OSM_ATTRIBUTION, maxZoom: 19 }).addTo(this.leafletMap);
+    L.control.attribution({ prefix: "Leaflet" }).addTo(this.leafletMap);
     this.markersLayer = L.layerGroup().addTo(this.leafletMap);
-    this.roadsLayer = L.layerGroup().addTo(this.leafletMap);
-
-    // Road lines follow the current viewport, not a fixed area computed
-    // once: only the visible bounds are fetched and redrawn as the map
-    // pans/zooms, debounced so a drag gesture doesn't fire a burst of
-    // worker requests.
-    this.leafletMap.on("moveend", () => this.scheduleRoadsRefresh());
 
     await this.updateMarkers(this.latestEvents);
-    this.scheduleRoadsRefresh();
-  }
-
-  scheduleRoadsRefresh() {
-    clearTimeout(this.roadsRefreshTimer);
-    this.roadsRefreshTimer = setTimeout(() => this.refreshRoadsForViewport(), ROADS_REFRESH_DEBOUNCE_MS);
-  }
-
-  /** Road-line visual backdrop for whatever's currently on screen,
-   * derived from the same OffGeo pack already loaded for geocoding (no
-   * second network fetch, unlike the old prototype's separate
-   * roads.json) -- ORDINARY-confidence segments within the live
-   * viewport, evenly thinned by getRoadLinesNear itself when a wide
-   * viewport would otherwise match tens of thousands at once. A stale
-   * in-flight request whose viewport has since changed is dropped
-   * rather than drawn. */
-  async refreshRoadsForViewport() {
-    if (!this.roadsLayer || !this.leafletMap) return;
-
-    const requestId = ++this.roadsRequestSeq;
-    const L = window.L;
-    const view = this.leafletMap.getBounds().pad(0.2); // a little buffer past the visible edge
-    const bounds = {
-      minLat: view.getSouth(),
-      maxLat: view.getNorth(),
-      minLon: view.getWest(),
-      maxLon: view.getEast(),
-    };
-    const lines = await getRoadLinesNear(bounds);
-    if (requestId !== this.roadsRequestSeq) return; // viewport moved again before this resolved
-
-    this.roadsLayer.clearLayers();
-    // Polylines render in Leaflet's overlayPane (z-index 400) and markers
-    // in markerPane (600), so markers already stack above roads without
-    // needing an explicit bringToBack() (LayerGroup doesn't have one).
-    for (const { points, label } of lines) {
-      const line = L.polyline(points, { color: "#5a5a68", weight: 1, opacity: 0.7, interactive: false }).addTo(
-        this.roadsLayer
-      );
-      // getRoadLinesNear labels at most one segment per distinct street
-      // name in the result (not one per segment -- a street split into
-      // many ROADSEGID pieces would otherwise repeat its own name down
-      // its whole length), so this fires once per visible street.
-      if (label) {
-        line.bindTooltip(label, { permanent: true, direction: "center", className: "road-label" });
-      }
-    }
   }
 
   /** Called by main.js whenever CallsList loads a fresh batch of events.
@@ -185,9 +136,6 @@ export class MapView extends Component {
       fitBoundsPoints.push([point.lat, point.lon]);
     }
     if (fitBoundsPoints.length) {
-      // fitBounds' own viewport change fires "moveend", which refreshes
-      // the road-line layer for the new view (see scheduleRoadsRefresh) --
-      // no separate road-line call needed here.
       this.leafletMap.fitBounds(fitBoundsPoints, { padding: [24, 24], maxZoom: 14 });
     }
   }

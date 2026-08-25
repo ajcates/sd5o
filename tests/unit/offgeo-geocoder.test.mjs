@@ -29,7 +29,7 @@ after(() => {
 // Worker -- tested directly here since Node has no global `Worker` to
 // exercise the worker boundary itself (that's covered by the real
 // Chromium E2E run in tests/e2e/run.mjs instead).
-const { geocode, getRoadLinesNear, _resetStateForTests } = await import("../../src/offgeo/pack-engine.js");
+const { geocode, _resetStateForTests } = await import("../../src/offgeo/pack-engine.js");
 
 beforeEach(() => {
   _resetStateForTests();
@@ -80,44 +80,3 @@ test("returns null for a street that doesn't exist in the pack", async () => {
   assert.equal(result, null);
 });
 
-test("getRoadLinesNear returns ORDINARY-confidence lines within the given bounds", async () => {
-  const bounds = { minLat: 32.70, maxLat: 32.72, minLon: -117.18, maxLon: -117.16 };
-  const lines = await getRoadLinesNear(bounds);
-  assert.ok(lines.length > 0, "expected at least one road line near downtown San Diego");
-  for (const { points, label } of lines.slice(0, 5)) {
-    assert.ok(Array.isArray(points));
-    assert.ok(points.length >= 2);
-    assert.ok(Array.isArray(points[0]) && points[0].length === 2);
-    assert.ok(label === null || typeof label === "string");
-  }
-});
-
-test("getRoadLinesNear labels at most one segment per distinct street name", async () => {
-  const bounds = { minLat: 32.70, maxLat: 32.72, minLon: -117.18, maxLon: -117.16 };
-  const lines = await getRoadLinesNear(bounds);
-  const labels = lines.map((l) => l.label).filter(Boolean);
-  assert.ok(labels.length > 0, "expected at least one labeled street");
-  assert.equal(labels.length, new Set(labels).size, "labels should be unique -- one per street name, not per segment");
-});
-
-test("getRoadLinesNear returns nothing for a bounding box far outside the county", async () => {
-  const bounds = { minLat: 0, maxLat: 0.01, minLon: 0, maxLon: 0.01 };
-  const lines = await getRoadLinesNear(bounds);
-  assert.equal(lines.length, 0);
-});
-
-test("getRoadLinesNear stays fast for a world-spanning bounding box (regression)", async () => {
-  // Real bug found live: Leaflet's getBounds() at very low (zoomed-out)
-  // zoom legitimately spans most of the globe. Without clamping the
-  // query to the pack's own known extent first, the grid-cell loop
-  // iterated the whole requested range regardless of where the actual
-  // data was -- a measured 25+ second stall in the browser. This must
-  // stay well under a second.
-  const worldBounds = { minLat: -85, maxLat: 85, minLon: -180, maxLon: 180 };
-  const t0 = Date.now();
-  const lines = await getRoadLinesNear(worldBounds);
-  const elapsedMs = Date.now() - t0;
-  assert.ok(elapsedMs < 3000, `expected well under 3s, took ${elapsedMs}ms`);
-  assert.ok(lines.length > 0, "a world-spanning box should still match San Diego County roads");
-  assert.ok(lines.length <= 600, "should still respect the MAX_LINES_PER_QUERY cap");
-});

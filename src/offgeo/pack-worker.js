@@ -8,7 +8,7 @@
  * logic and is also imported directly by tests (no real `Worker`
  * needed there). */
 
-import { geocode, getRoadLinesNear, DEFAULT_PACK_URL } from "./pack-engine.js";
+import { geocode, DEFAULT_PACK_URL } from "./pack-engine.js";
 
 // Resolved relative to this worker module's own URL, not the page that
 // created it -- a worker's fetch()/import base is its own script location.
@@ -19,7 +19,6 @@ self.onmessage = async (event) => {
   try {
     let result;
     if (method === "geocode") result = await geocode(args[0], PACK_URL);
-    else if (method === "getRoadLinesNear") result = await getRoadLinesNear(args[0], PACK_URL);
     else throw new Error(`unknown worker method: ${method}`);
     self.postMessage({ id, result });
   } catch (error) {
