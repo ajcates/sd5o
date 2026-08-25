@@ -138,6 +138,7 @@
     .map-panel.open {
       height: 360px;
       margin: 14px 0 0;
+      box-shadow: 0 18px 48px var(--shadow);
     }
 
     #map-canvas {
@@ -151,6 +152,16 @@
       border: 1px solid var(--outline-variant);
       border-radius: 14px;
       font-family: inherit;
+    }
+
+    /* OSM's default tiles are a bright cream/white basemap -- jarring
+       against this app's all-black surface. Standard dark-mode-map trick:
+       invert then hue-rotate back to restore natural-looking blues/greens
+       instead of inversion's orange sky/land. Applied to the tile pane
+       only, not markers/popups/controls, which already have their own
+       dark styling below and would invert into the wrong colors. */
+    .leaflet-tile-pane {
+      filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.92) saturate(0.9);
     }
 
     .leaflet-control-attribution,
