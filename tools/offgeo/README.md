@@ -306,3 +306,31 @@ Both halves of the open question resolve at once, in different directions: **mos
 This is real, honest, and still incomplete evidence for `OFF-109`'s decision, not a verdict: the JS decoder here is a direct, unoptimized port (allocates a new object/array per record, no typed-array batch decode, no lazy/partial-record parsing) — plausibly a meaningfully faster JS implementation exists (batch-decoding into typed-array columns rather than per-record objects, or skipping full-record parsing when only checking a range), but that optimization work doesn't exist yet and isn't credited here. SQLite's own browser-loading cost (a WASM build like sql.js — bundle size, load time, whether it fits this project's no-build-step static-JS constraint at all) is also still untested — that's the other still-open half of `OFF-108`/`OFF-115`, not resolved by this decode-speed number alone.
 
 Artifacts: `build/offgeo-sources/r1-pack-blocks.bin`, `r1-pack-manifest.json` (Python-exported, gitignored), `build/offgeo-sources/r1-js-decode-benchmark-report.json` (JS-generated, gitignored). Both reproducible by re-running the two commands above in order.
+
+## Phase R1, Group D continued — sql.js (SQLite-in-browser) feasibility (`OFF-108`/`OFF-115`, closing the remaining half)
+
+```sh
+npm install                                          # pulls sql.js (devDependency, never shipped)
+node tools/offgeo/prototype-js/sqljs-benchmark.mjs    # requires r1-pack.sqlite + r1-pack-manifest.json
+```
+
+The one piece the JS decode comparison above left open: SQLite has no native browser binding, so shipping it at all means shipping [sql.js](https://github.com/sql-js/sql.js) — a WASM build of SQLite — as a real runtime dependency, unlike the custom format which needs nothing beyond plain JS. `tools/offgeo/prototype-js/sqljs-benchmark.mjs` measures exactly what that would cost: the production `sql-wasm.js`/`sql-wasm.wasm` bundle size, WASM init time, DB load time, and query latency against the real `OFF-104` SQLite pack (`r1-pack.sqlite`) — using the *exact same 2,000-key seeded sample* as both the Python and JS custom-format benchmarks, for a genuine four-way same-data comparison, not four separate ad hoc numbers.
+
+**Real run:**
+
+| Reader | μs/lookup (mean) |
+| --- | --- |
+| SQLite, Python (native, `OFF-104`) | 34–36 |
+| **SQLite, sql.js/WASM in real V8 (this section)** | **150.72** |
+| Custom format, real V8/Node (`OFF-108` above) | 4,576.67 |
+| Custom format, Python (`OFF-105`) | 78,389–78,899 |
+
+- **sql.js production bundle: 46,535 bytes JS + 658,410 bytes WASM = 704,945 bytes raw (~688 KiB), ~330 KiB gzip** — a one-time runtime download, not part of the per-county pack. Against the ≤30 MiB pack budget this is small (~1–2%), but it is a real, new kind of asset this project has never shipped before (the app is currently zero-WASM, zero-build-step) — a genuine architectural cost, not just bytes.
+- **WASM init (compile + instantiate): ~41.5 ms. Loading the real 77.3 MB `r1-pack.sqlite` into WASM memory: ~11.5 ms.** Both one-time, page-load-time costs. The DB-load number comes with a real caveat: sql.js has no partial/streaming read by default — it loads the *entire* file into WASM linear memory upfront, unlike the block-partitioned custom format's per-query decode. A production integration would likely want sql.js's OPFS-backed VFS (or similar) to avoid that as the pack grows toward the full county's data; not evaluated here.
+- **Query latency: 150.72 μs mean / 112.50 μs median / 253.55 μs p95, 2,000/2,000 matched** — real, same-sample, same-schema queries as `OFF-104`'s Python SQLite benchmark. sql.js is **~4.4x slower than Python's native SQLite** (WASM/JS-marshaling overhead, expected), but **~30x faster than this project's own naive custom-format JS decoder** (4,576.67 μs mean). That reverses the size-only intuition from `OFF-104`: on speed, in the actual JS/WASM environment most relevant to `OFF-109`'s decision, SQLite-via-sql.js decisively beats the current custom-format implementation — not narrowly, by an order of magnitude.
+
+**Where this leaves `OFF-109`'s decision, stated plainly rather than resolved:** the custom format is still meaningfully smaller (~2.5x, `OFF-104`) and needs no new runtime dependency; SQLite-via-sql.js is dramatically faster to query in the real target environment and gets that speed "for free" from a mature, independently-maintained engine, at the cost of a ~330 KiB one-time download and a real new class of dependency (WASM, `wasm-unsafe-eval`-style CSP considerations, an OPFS integration eventually) this project has avoided so far. Whether an optimized custom-format decoder (typed-array batch decode, avoiding per-record allocation) could close that 30x gap is genuinely unknown — not attempted here. This section provides real evidence for that trade-off; `OFF-109` itself, the recorded decision, still hasn't been made.
+
+**Still not done, disclosed rather than assumed away:** everything above ran in Node/V8, not literally inside a browser page — no system Chromium is installed on this dev host (`apt-cache policy chromium` shows a candidate but nothing installed), so the existing `playwright-core`/system-Chromium E2E harness (`tests/e2e/run.mjs`) couldn't be reused for this. Node's V8 is the same engine and WASM runtime Chromium ships, so the *computational* numbers above are a fair proxy, but real browser-only concerns — CSP directives for WASM instantiation, actual `fetch`-based streaming/caching of the `.wasm` asset, service-worker interaction — remain untested.
+
+Artifact: `build/offgeo-sources/r1-sqljs-benchmark-report.json` (gitignored, reproducible). `sql.js` is a `devDependency` in `package.json` (pinned `1.14.2`, exact version matching this project's `playwright-core` pattern) — never shipped to the browser app, same as `playwright-core`.
