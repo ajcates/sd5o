@@ -16,6 +16,12 @@
 // playwright-core E2E harness) is the next step if this number looks
 // promising; not done in this script.
 //
+// Runs two decoders back-to-back on the identical sample: `packformat.mjs`
+// (the direct, unoptimized port) and `packformat-fast.mjs` (inlined
+// varint decode, flat-Float64Array geometry -- see that file's own
+// docstring for what changed and why, and packformat-fast.test.mjs /
+// the real-data cross-check for why it's trusted to decode correctly).
+//
 // Usage: node tools/offgeo/prototype-js/benchmark.mjs
 //   (requires build/offgeo-sources/r1-pack-blocks.bin and
 //    r1-pack-manifest.json -- run prototype-benchmark-reader.py first)
@@ -23,7 +29,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { decodeRecords } from "./packformat.mjs";
+import { decodeRecords as decodeBaseline } from "./packformat.mjs";
+import { decodeRecords as decodeFast } from "./packformat-fast.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..", "..", "..");
@@ -35,17 +42,9 @@ function streetKeyFromJoined(joined) {
   return joined.split("\x1f");
 }
 
-function main() {
-  console.log("Loading exported blocks + manifest...");
-  const blocksBuf = new Uint8Array(readFileSync(blocksPath));
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
-  console.log(`  ${blocksBuf.length.toLocaleString()} bytes, ${manifest.blockOffsets.length} blocks, ${Object.keys(manifest.index).length} indexed keys`);
-
-  const index = new Map(Object.entries(manifest.index)); // "a\x1fb\x1fc\x1fd" -> [blockId, ...]
-  const sampleKeys = manifest.sampleKeys;
-
+function runBenchmark(label, decodeRecords, blocksBuf, manifest, sampleKeys) {
   function lookupSegments(joinedKey) {
-    const blockIds = index.get(joinedKey);
+    const blockIds = manifest.index[joinedKey];
     if (!blockIds || blockIds.length === 0) return [];
     const wantKey = streetKeyFromJoined(joinedKey).join("\x1f");
     const out = [];
@@ -61,10 +60,9 @@ function main() {
     return out;
   }
 
-  console.log(`\nRunning ${sampleKeys.length} cold lookups (fresh block decode every query, no cache)...`);
+  console.log(`\nRunning ${sampleKeys.length} cold lookups with ${label} (fresh block decode every query, no cache)...`);
   const perLookupUs = [];
   let totalMatched = 0;
-  const t0 = performance.now();
   for (const key of sampleKeys) {
     const tStart = performance.now();
     const segments = lookupSegments(key);
@@ -72,7 +70,6 @@ function main() {
     perLookupUs.push((tEnd - tStart) * 1000);
     if (segments.length > 0) totalMatched += 1;
   }
-  const totalMs = performance.now() - t0;
 
   perLookupUs.sort((a, b) => a - b);
   const n = perLookupUs.length;
@@ -80,23 +77,42 @@ function main() {
   const median = perLookupUs[Math.floor(n / 2)];
   const p95 = perLookupUs[Math.floor(n * 0.95)];
 
-  const report = {
-    generatedAt: new Date().toISOString(),
-    engine: `node ${process.version} (V8)`,
+  const result = {
     sampleSize: n,
     matchedKeys: totalMatched,
-    totalMilliseconds: Math.round(totalMs),
     microsecondsPerLookupMean: Math.round(mean * 100) / 100,
     microsecondsPerLookupMedian: Math.round(median * 100) / 100,
     microsecondsPerLookupP95: Math.round(p95 * 100) / 100,
-    note: "Same 2000-key seeded sample and same exported block bytes prototype-benchmark-reader.py's Python benchmark used -- a fair same-data, cross-engine comparison.",
+  };
+  console.log(`  Mean:   ${result.microsecondsPerLookupMean.toFixed(2)} us/lookup`);
+  console.log(`  Median: ${result.microsecondsPerLookupMedian.toFixed(2)} us/lookup`);
+  console.log(`  P95:    ${result.microsecondsPerLookupP95.toFixed(2)} us/lookup`);
+  console.log(`  Matched: ${totalMatched}/${n}`);
+  return result;
+}
+
+function main() {
+  console.log("Loading exported blocks + manifest...");
+  const blocksBuf = new Uint8Array(readFileSync(blocksPath));
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  console.log(`  ${blocksBuf.length.toLocaleString()} bytes, ${manifest.blockOffsets.length} blocks, ${Object.keys(manifest.index).length} indexed keys`);
+
+  const sampleKeys = manifest.sampleKeys;
+
+  const baseline = runBenchmark("packformat.mjs (baseline)", decodeBaseline, blocksBuf, manifest, sampleKeys);
+  const fast = runBenchmark("packformat-fast.mjs (optimized)", decodeFast, blocksBuf, manifest, sampleKeys);
+
+  const report = {
+    generatedAt: new Date().toISOString(),
+    engine: `node ${process.version} (V8)`,
+    note: "Same 2000-key seeded sample and same exported block bytes prototype-benchmark-reader.py's Python benchmark used -- a fair same-data, cross-engine, cross-implementation comparison.",
+    baseline,
+    optimized: fast,
+    speedupFactor: Math.round((baseline.microsecondsPerLookupMean / fast.microsecondsPerLookupMean) * 100) / 100,
   };
   writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
-  console.log(`\nMean:   ${report.microsecondsPerLookupMean.toFixed(2)} us/lookup`);
-  console.log(`Median: ${report.microsecondsPerLookupMedian.toFixed(2)} us/lookup`);
-  console.log(`P95:    ${report.microsecondsPerLookupP95.toFixed(2)} us/lookup`);
-  console.log(`Matched: ${totalMatched}/${n}`);
+  console.log(`\nOptimized is ${report.speedupFactor}x faster than the baseline port (mean).`);
   console.log(`\nReport: ${reportPath}`);
 }
 
