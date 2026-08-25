@@ -1,6 +1,8 @@
 # Calls map prototype
 
-Status: Done 2026-08-23 (prototype, not the real R1-R4 geocoder/compiler)
+Status: Superseded 2026-08-25 — the geocoder/roads-data pieces this note describes (`src/app/geocoder.js`, `src/app/data/address-index.json`, `src/app/data/roads.json`, `tools/offgeo/build-address-index.py`, `tools/offgeo/build-roads-geometry.py`) were deleted and replaced by a real OffGeo integration: `src/offgeo/` (a real JS port of the R1 normalization/pack-format/interpolation libraries) reading the real compiled pack (`offgeo/packs/v0/sd-06073.ogp0`, built by `tools/offgeo/compile-pack.py`). `src/app/map-view.js` (the Leaflet map panel itself, the pulsing markers, tap-to-scroll) is unchanged in spirit and still described accurately below — only where its coordinates and road-line geometry come from changed. Kept as the historical record of the prototype step that came before; see `notes/offgeo/r1-todo.md` for the real integration's own status.
+
+Original status: Done 2026-08-23 (prototype, not the real R1-R4 geocoder/compiler)
 Scope: a further extension of [todo.md](./todo.md) Group 4's replatforming work, built at the user's direction as a slice of what roadmap.md's R5 "Product UI" workstream will eventually need for real (distance/location, `src/offgeo/` geocoder-backed UI). Nothing here is R1-R4 implementation — it deliberately reuses only what R0 already pinned and profiled, plus one new build-time dependency (`proj`/`cs2cs`, noted below).
 
 ## What it is

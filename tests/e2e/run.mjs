@@ -15,7 +15,12 @@
  *      (either "live" against the real feed, or "error" -- both are a
  *      real, checkable outcome; only an infinite hang or a page/console
  *      error fails the run).
- *   3. Probes the browser capability matrix (OFF-013) in that same page
+ *   3. If live, opens the map panel -- this triggers the real OffGeo pack
+ *      fetch+decode (src/offgeo/geocoder.js against offgeo/packs/v0/
+ *      sd-06073.ogp0) -- and waits for at least one real call to geocode
+ *      and render as a marker (or the panel settling with none, also a
+ *      real checkable outcome).
+ *   4. Probes the browser capability matrix (OFF-013) in that same page
  *      context and writes notes/offgeo/browser-capability-matrix.md.
  */
 import http from "node:http";
@@ -138,10 +143,16 @@ async function main() {
       statusPanelOutcome = "timed out still loading";
     }
 
+    let mapOutcome = "not attempted (status panel never went live)";
+    if (statusPanelOutcome === "live") {
+      mapOutcome = await checkMapAndGeocoding(page);
+    }
+
     const capabilities = await page.evaluate(CAPABILITY_PROBE);
     capabilities.browserVersion = browser.version();
 
     console.log("Status panel outcome:", statusPanelOutcome);
+    console.log("Map/geocoding outcome:", mapOutcome);
     console.log("Console errors:", consoleErrors.length ? consoleErrors : "none");
     console.log("Page errors:", pageErrors.length ? pageErrors : "none");
     console.log("Capabilities:", JSON.stringify(capabilities, null, 2));
@@ -157,6 +168,34 @@ async function main() {
   } finally {
     await browser.close();
     server.close();
+  }
+}
+
+/** Opens the map panel (triggers the real OffGeo pack fetch+decode via
+ * src/offgeo/geocoder.js) and waits for either a rendered marker or the
+ * panel settling with none -- both are real, checkable outcomes; only a
+ * page error (already tracked separately) or a timeout is a failure. */
+async function checkMapAndGeocoding(page) {
+  await page.click("#map-toggle-slot button");
+  try {
+    await page.waitForFunction(() => document.querySelector("#map-panel .leaflet-container") !== null, {
+      timeout: 10000,
+    });
+  } catch {
+    return "timed out waiting for the Leaflet map to initialize";
+  }
+
+  // The real pack is ~10MB gzip and decodes ~165k records client-side
+  // (OFF-108 measured ~1s in Node/V8) -- give it real headroom before
+  // concluding "no markers" rather than "still decoding".
+  try {
+    await page.waitForFunction(() => document.querySelectorAll("#map-panel .call-marker").length > 0, {
+      timeout: 15000,
+    });
+    const markerCount = await page.$$eval("#map-panel .call-marker", (els) => els.length);
+    return `${markerCount} real call(s) geocoded and rendered as markers`;
+  } catch {
+    return "map initialized, zero calls geocoded this run (not necessarily a bug -- depends on live feed content)";
   }
 }
 
@@ -178,7 +217,7 @@ async function writeCapabilityMatrix(cap, statusPanelOutcome, consoleErrors, pag
   ];
   const md = `# Browser capability matrix (\`OFF-013\`, Group 6)
 
-Status: Probed live 2026-08-23 against one real device/browser
+Status: Probed live ${new Date().toISOString().slice(0, 10)} against one real device/browser
 Scope: [\`todo.md\`](./todo.md) Group 6. This is a **measured baseline from the one browser available in this dev environment**, not the production target-device matrix -- \`roadmap.md\` §13 separately tracks "Reference Android/browser matrix" as its own decision due at R1 start, once real target devices/browsers are chosen. Re-run \`node tests/e2e/run.mjs\` (regenerates this file) against each browser added to that matrix as it's decided.
 
 Probed with: playwright-core driving system Chromium (\`${CHROMIUM_PATH}\`), version \`${chromiumVersionOut}\`, via \`tests/e2e/run.mjs\`.

@@ -1,9 +1,9 @@
 # Browser capability matrix (`OFF-013`, Group 6)
 
-Status: Probed live 2026-08-23 against one real device/browser
+Status: Probed live 2026-08-25 against one real device/browser
 Scope: [`todo.md`](./todo.md) Group 6. This is a **measured baseline from the one browser available in this dev environment**, not the production target-device matrix -- `roadmap.md` §13 separately tracks "Reference Android/browser matrix" as its own decision due at R1 start, once real target devices/browsers are chosen. Re-run `node tests/e2e/run.mjs` (regenerates this file) against each browser added to that matrix as it's decided.
 
-Probed with: playwright-core driving system Chromium (`/data/data/com.termux/files/usr/bin/chromium-browser`), version `149.0.7827.155`, via `tests/e2e/run.mjs`.
+Probed with: playwright-core driving system Chromium (`/usr/bin/chromium`), version `151.0.7922.169`, via `tests/e2e/run.mjs`.
 
 | Capability | Supported here | Degraded/unsupported behavior required |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Probed with: playwright-core driving system Chromium (`/data/data/com.termux/fil
 | Geolocation (`navigator.geolocation`) | Yes | Keep calls/geocoding usable; explicit recovery action |
 | Secure context (`isSecureContext`) | Yes | Several APIs above are unavailable outside a secure context by spec |
 
-Storage estimate sample from this probe run: `{"quota":1073765064,"usage":23240,"usageDetails":{"caches":22838,"serviceWorkerRegistrations":402}}`.
+Storage estimate sample from this probe run: `{"quota":6442474184,"usage":23240,"usageDetails":{"caches":22838,"serviceWorkerRegistrations":402}}`.
 
 ## Required degraded/unsupported behavior (per `spec.md`)
 
