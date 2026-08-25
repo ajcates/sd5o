@@ -1,5 +1,6 @@
 import { Component, html, raw } from "../framework/core.js";
 import { fetchJson, prettyTime } from "./format.js";
+import { eventTypeColor, eventTypeCategoryName } from "./event-category.js";
 
 // Only these feed fields are compared/persisted for the new/changed-row
 // cache diff. The previous version (index.html:1335-1354) stored the whole
@@ -167,15 +168,25 @@ export class CallsList extends Component {
     if (event.IsOpen) classes.push("open");
     const address = `${event.Address}, ${event.Community}`;
     const mapsHref = `https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(address)}`;
+    const categoryColor = eventTypeColor(event.EventType);
+    const categoryName = eventTypeCategoryName(event.EventType);
+    // The left-edge color now carries the dispatch category (matching
+    // the map marker's fill color, see event-category.js), so "new"/
+    // "changed" -- previously shown the same way, by swapping that
+    // edge's color -- get their own explicit badge instead of competing
+    // for the same visual slot.
+    const badge = event.isNew ? `<span class="badge-new">New</span>` : event.isChanged ? `<span class="badge-changed">Updated</span>` : "";
     return html`
       <tr
         class="${classes.join(" ")}"
-        style="--row-index: ${rowIndex + 1}"
+        style="--row-index: ${rowIndex + 1}; --category-color: ${raw(categoryColor)}"
         data-event-number="${event.EventNumber}"
         data-on-click="selectRow"
+        title="${categoryName}"
       >
         <td data-label="Address" class="Address">
           <a href="${raw(mapsHref)}" target="_blank" rel="noopener noreferrer">
+            ${raw(badge)}
             <span class="address-primary">${event.Address}</span>
             <span class="community">${event.Community}</span>
           </a>

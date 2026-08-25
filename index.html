@@ -190,6 +190,13 @@
       box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
     }
 
+    /* Fill color is the call's dispatch category (event-category.js);
+       this ring is the only remaining open/closed signal on the map
+       now that the fill no longer carries it. */
+    .call-marker.open {
+      border-color: var(--secondary);
+    }
+
     .call-marker.pulsing::after {
       position: absolute;
       inset: 0;
@@ -211,14 +218,39 @@
       }
     }
 
+    /* A hollow ring rather than a filled dot -- reads clearly as "you are
+       here" without being mistaken for a call marker (those are always
+       filled, see .call-marker above). */
     .user-location-marker {
+      position: relative;
       display: block;
-      width: 12px;
-      height: 12px;
-      background: #4d9dff;
-      border: 2px solid var(--surface);
+      width: 16px;
+      height: 16px;
+      background: transparent;
+      border: 3px solid #4d9dff;
       border-radius: 50%;
-      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(77, 157, 255, 0.25);
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5), 0 0 10px rgba(77, 157, 255, 0.65);
+    }
+
+    .user-location-marker::after {
+      position: absolute;
+      inset: -7px;
+      border: 1.5px solid #4d9dff;
+      border-radius: 50%;
+      content: "";
+      opacity: 0.55;
+      animation: user-location-pulse 2.2s var(--ease-standard) infinite;
+    }
+
+    @keyframes user-location-pulse {
+      0% {
+        opacity: 0.55;
+        transform: scale(0.85);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.6);
+      }
     }
 
     tbody tr.selected td {
@@ -615,8 +647,11 @@
       border-bottom: 0;
     }
 
-    tbody tr.open td:first-child {
-      box-shadow: inset 3px 0 0 var(--secondary);
+    /* Set per-row from event-category.js via the --category-color custom
+       property (calls-list.js) -- matches the same call's marker fill
+       color on the map, so a color means the same thing in both places. */
+    tbody tr:not(.map) td:first-child {
+      box-shadow: inset 3px 0 0 var(--category-color, transparent);
     }
 
     tbody tr:not(.open) {
@@ -688,16 +723,28 @@
       font-weight: 520;
     }
 
-    tr.new td:first-child {
-      box-shadow: inset 3px 0 0 var(--primary);
+    .badge-new,
+    .badge-changed {
+      display: inline-flex;
+      margin: 0 7px 3px 0;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 0.58rem;
+      font-weight: 750;
+      letter-spacing: 0.06em;
+      line-height: 1.5;
+      text-transform: uppercase;
+      vertical-align: middle;
     }
 
-    tr.changed td:first-child {
-      box-shadow: inset 3px 0 0 var(--secondary);
+    .badge-new {
+      color: var(--on-primary-container);
+      background: var(--primary-container);
     }
 
-    tr.nearby {
-      background: rgba(255, 77, 77, 0.12);
+    .badge-changed {
+      color: var(--on-secondary-container);
+      background: var(--secondary-container);
     }
 
     .hidden {
@@ -834,10 +881,9 @@
         background: var(--surface-container-high);
       }
 
-      tbody tr.open,
-      tbody tr.new,
-      tbody tr.changed {
-        border-left-color: var(--secondary);
+      tbody tr:not(.map) {
+        border-left-width: 3px;
+        border-left-color: var(--category-color, var(--outline-variant));
       }
 
       tbody tr:not(.open) {
@@ -860,9 +906,7 @@
         border: 0;
       }
 
-      tbody tr.open td:first-child,
-      tr.new td:first-child,
-      tr.changed td:first-child {
+      tbody tr:not(.map) td:first-child {
         box-shadow: none;
       }
 

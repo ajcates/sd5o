@@ -2,6 +2,7 @@ import { Component, html } from "../framework/core.js";
 import { geocode } from "../offgeo/geocoder.js";
 import { ageMinutes } from "./format.js";
 import { loadLeaflet } from "./leaflet-loader.js";
+import { eventTypeColor, eventTypeCategoryName } from "./event-category.js";
 
 const OPEN_ANIMATION_MS = 340;
 const NO_PULSE_AFTER_MINUTES = 120;
@@ -62,6 +63,7 @@ export class MapView extends Component {
     this.locationLayer = null;
     this.latestEvents = [];
     this.markerByEventNumber = new Map();
+    this.markersBounds = null;
 
     this.toggleButton = document.createElement("button");
     this.toggleButton.type = "button";
@@ -110,7 +112,17 @@ export class MapView extends Component {
    * Google Maps iframe embed, which made a request to Google on every
    * expand -- see calls-list.js's selectRow). Opens the map if it's
    * closed, waits for Leaflet + the event's marker to exist, then pans/
-   * zooms to it. */
+   * zooms to it.
+   *
+   * Not every call has a marker -- v0's geocoder has no fallback beyond
+   * an exact street-name/range match (see pack-engine.js), so some real
+   * addresses turn up nothing. Silently leaving the map wherever it was
+   * for those taps looked like a bug (reported live: "the call in view
+   * is exactly one call away from the one it should be") -- the map
+   * wasn't off by one, it just hadn't moved and was still showing
+   * whichever call was focused *before*. Resetting to the all-markers
+   * overview instead makes the "no location available for this call"
+   * case honest rather than silently wrong-looking. */
   async focusEventOnMap(eventNumber) {
     const wasOpen = this.isOpen;
     this.open();
@@ -123,7 +135,10 @@ export class MapView extends Component {
       this.leafletMap.invalidateSize();
     }
     const marker = this.markerByEventNumber.get(eventNumber);
-    if (!marker) return;
+    if (!marker) {
+      if (this.markersBounds) this.leafletMap.fitBounds(this.markersBounds, { padding: [24, 24], maxZoom: 14 });
+      return;
+    }
     this.leafletMap.setView(marker.getLatLng(), 16, { animate: true });
   }
 
@@ -166,10 +181,12 @@ export class MapView extends Component {
     const icon = L.divIcon({
       className: "",
       html: `<span class="user-location-marker"></span>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
     });
-    L.marker([latitude, longitude], { icon, title: "Your location", interactive: false }).addTo(this.locationLayer);
+    L.marker([latitude, longitude], { icon, title: "Your location", interactive: false, zIndexOffset: 1000 }).addTo(
+      this.locationLayer
+    );
   }
 
   async ensureMapInitialized() {
@@ -219,26 +236,32 @@ export class MapView extends Component {
       this.markerByEventNumber.set(event.EventNumber, marker);
       fitBoundsPoints.push([point.lat, point.lon]);
     }
-    if (fitBoundsPoints.length) {
-      this.leafletMap.fitBounds(fitBoundsPoints, { padding: [24, 24], maxZoom: 14 });
+    this.markersBounds = fitBoundsPoints.length ? L.latLngBounds(fitBoundsPoints) : null;
+    if (this.markersBounds) {
+      this.leafletMap.fitBounds(this.markersBounds, { padding: [24, 24], maxZoom: 14 });
     }
   }
 
+  /** Marker fill color encodes the call's dispatch category (see
+   * event-category.js), matching the same category's left-edge color in
+   * the calls table (calls-list.js) so a color means the same thing in
+   * both places. Open/closed status, previously the marker's own color,
+   * now shows as the ring around it instead so neither signal is lost. */
   buildMarker(L, event, point) {
     const pulse = pulseParamsForAge(ageMinutes(event.DateTime));
-    const colorVar = event.IsOpen ? "var(--secondary)" : "var(--primary)";
+    const colorVar = eventTypeColor(event.EventType);
     const pulseStyle = pulse
       ? `--pulse-duration:${pulse.duration}s;--pulse-scale:${pulse.scale};--pulse-opacity:${pulse.opacity}`
       : "";
     const icon = L.divIcon({
       className: "",
-      html: `<span class="call-marker${pulse ? " pulsing" : ""}" style="--marker-color:${colorVar};${pulseStyle}"></span>`,
+      html: `<span class="call-marker${pulse ? " pulsing" : ""}${event.IsOpen ? " open" : ""}" style="--marker-color:${colorVar};${pulseStyle}"></span>`,
       iconSize: [14, 14],
       iconAnchor: [7, 7],
     });
     const marker = L.marker([point.lat, point.lon], {
       icon,
-      title: `${event.Address}, ${event.Community}`,
+      title: `${eventTypeCategoryName(event.EventType)} · ${event.Address}, ${event.Community}`,
       alt: event.EventType,
     });
     marker.on("click", () => this.props.onSelectEvent?.(event.EventNumber));
