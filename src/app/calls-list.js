@@ -41,12 +41,12 @@ function annotateWithCache(events) {
 
 /** Owns #listing: the loading skeleton, error state, and the calls table
  * itself (address links, relative time, open/new/changed row state, and
- * the click-to-expand inline map row). Ported from
- * CallsForService.buildTable (index.html:1298-1450). The map-expand/collapse
- * (toggleMapRow) and text filter (applyFilter) intentionally stay outside
+ * tap-a-row-to-zoom-the-map selection). Ported from
+ * CallsForService.buildTable (index.html:1298-1450). Row selection
+ * (selectRow) and text filter (applyFilter) intentionally stay outside
  * the render()/setState() cycle -- they mutate the already-rendered DOM
- * directly, exactly like the code they replace, so a filter keystroke or an
- * open map row is never wiped by an unrelated re-render. Only a data
+ * directly, exactly like the code they replace, so a filter keystroke or a
+ * row selection is never wiped by an unrelated re-render. Only a data
  * refresh (load()) goes through the full render() rebuild, matching the
  * previous full-teardown-per-refresh behavior 1:1 (see audit finding 4) --
  * that behavior wasn't changed here, only reorganized. */
@@ -106,19 +106,12 @@ export class CallsList extends Component {
 
   applyFilter() {
     const filter = this.filterValue.trim().toLowerCase();
-    const rows = this.root.querySelectorAll("tbody tr:not(.map)");
+    const rows = this.root.querySelectorAll("tbody tr");
     let visibleCount = 0;
     for (const row of rows) {
       const matches = row.textContent.toLowerCase().includes(filter);
-      const mapRow = row.nextElementSibling?.classList.contains("map") ? row.nextElementSibling : null;
-      if (matches) {
-        row.classList.remove("hidden");
-        mapRow?.classList.remove("hidden");
-        visibleCount += 1;
-      } else {
-        row.classList.add("hidden");
-        mapRow?.classList.add("hidden");
-      }
+      row.classList.toggle("hidden", !matches);
+      if (matches) visibleCount += 1;
     }
     const text = filter ? `${visibleCount} of ${rows.length} calls` : `${rows.length} call${rows.length === 1 ? "" : "s"}`;
     this.props.onEventCount?.(text);
@@ -135,7 +128,7 @@ export class CallsList extends Component {
    * search filter first if it's hiding the row, since a marker tap is an
    * explicit request to see that specific call. */
   focusEvent(eventNumber) {
-    const rows = this.root.querySelectorAll("tbody tr:not(.map)");
+    const rows = this.root.querySelectorAll("tbody tr");
     const row = [...rows].find((r) => r.dataset.eventNumber === eventNumber);
     if (!row) return;
 
@@ -149,51 +142,22 @@ export class CallsList extends Component {
     this.selectedRowTimeout = setTimeout(() => row.classList.remove("selected"), 2000);
   }
 
-  toggleMapRow(event, rowEl) {
+  /** Tapping a row zooms the top map panel to that call's location
+   * (opening it first if it's closed) -- replaces the old per-row Google
+   * Maps iframe embed, which made a request to Google on every expand.
+   * See MapView.focusEventOnMap in map-view.js. */
+  selectRow(event, rowEl) {
     if (event.target.closest("a")) return;
-
-    if (rowEl.classList.contains("mapopen")) {
-      rowEl.classList.remove("mapopen");
-      rowEl.setAttribute("aria-expanded", "false");
-      const mapRow = rowEl.nextElementSibling;
-      if (mapRow && mapRow.classList.contains("map")) {
-        const slide = mapRow.querySelector(".map-slide");
-        mapRow.classList.remove("open");
-        const removeWhenCollapsed = (evt) => {
-          if (evt.target !== slide || evt.propertyName !== "height") return;
-          slide.removeEventListener("transitionend", removeWhenCollapsed);
-          mapRow.remove();
-        };
-        slide.addEventListener("transitionend", removeWhenCollapsed);
-      }
-      return;
-    }
 
     const eventData = this.state.events.find((e) => e.EventNumber === rowEl.dataset.eventNumber);
     if (!eventData) return;
 
-    const mapRow = document.createElement("tr");
-    mapRow.className = "map";
-    const mapCell = document.createElement("td");
-    mapCell.colSpan = this.root.querySelectorAll("th").length;
-    const mapSlide = document.createElement("div");
-    mapSlide.className = "map-slide";
-    const mapFrame = document.createElement("iframe");
-    mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(
-      eventData.Address + ", " + eventData.Community
-    )}&t=h&output=embed&z=16`;
-    mapFrame.title = `Map near ${eventData.Address}`;
-    mapFrame.loading = "lazy";
-    mapSlide.appendChild(mapFrame);
-    mapCell.appendChild(mapSlide);
-    mapRow.appendChild(mapCell);
+    this.root.querySelectorAll("tbody tr.selected").forEach((r) => r.classList.remove("selected"));
+    rowEl.classList.add("selected");
+    clearTimeout(this.selectedRowTimeout);
+    this.selectedRowTimeout = setTimeout(() => rowEl.classList.remove("selected"), 2000);
 
-    rowEl.after(mapRow);
-    rowEl.classList.add("mapopen");
-    rowEl.setAttribute("aria-expanded", "true");
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => mapRow.classList.add("open"));
-    });
+    this.props.onRowTap?.(eventData);
   }
 
   renderRow(event, rowIndex) {
@@ -208,8 +172,7 @@ export class CallsList extends Component {
         class="${classes.join(" ")}"
         style="--row-index: ${rowIndex + 1}"
         data-event-number="${event.EventNumber}"
-        data-on-click="toggleMapRow"
-        aria-expanded="false"
+        data-on-click="selectRow"
       >
         <td data-label="Address" class="Address">
           <a href="${raw(mapsHref)}" target="_blank" rel="noopener noreferrer">

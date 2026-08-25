@@ -120,9 +120,17 @@
     }
 
     .map-panel {
+      position: sticky;
+      /* Synced to .app-header's real rendered height by main.js's
+         ResizeObserver -- the search bar's open/closed state changes that
+         height, so a hardcoded offset would gap or overlap depending on
+         search state. The fallback covers the one frame before JS runs. */
+      top: var(--header-height, 65px);
+      z-index: 5;
       height: 0;
       overflow: hidden;
       margin: 0;
+      background: var(--surface);
       border-radius: 14px;
       transition: height 320ms var(--ease-emphasized);
     }
@@ -190,6 +198,16 @@
         opacity: 0;
         transform: scale(var(--pulse-scale, 2));
       }
+    }
+
+    .user-location-marker {
+      display: block;
+      width: 12px;
+      height: 12px;
+      background: #4d9dff;
+      border: 2px solid var(--surface);
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(77, 157, 255, 0.25);
     }
 
     tbody tr.selected td {
@@ -298,6 +316,7 @@
       grid-area: actions;
       display: flex;
       justify-content: flex-end;
+      gap: 8px;
     }
 
     .icon-button {
@@ -670,30 +689,6 @@
       background: rgba(255, 77, 77, 0.12);
     }
 
-    tr.map td {
-      padding: 0;
-      background: #000000;
-      overflow: hidden;
-    }
-
-    tr.map .map-slide {
-      display: block;
-      height: 0;
-      overflow: hidden;
-      transition: height 260ms var(--ease-emphasized);
-    }
-
-    tr.map.open .map-slide {
-      height: 320px;
-    }
-
-    tr.map iframe {
-      display: block;
-      width: 100%;
-      height: 320px;
-      border: 0;
-    }
-
     .hidden {
       display: none !important;
     }
@@ -889,31 +884,6 @@
         font-size: 0.82rem;
       }
 
-      tr.map {
-        display: block;
-        margin-top: -7px;
-      }
-
-      tr.map td {
-        display: block;
-        padding: 0;
-        background: transparent;
-      }
-
-      tr.map .map-slide {
-        padding: 0 1px;
-      }
-
-      tr.map.open .map-slide {
-        height: 250px;
-        padding: 6px 1px 0;
-      }
-
-      tr.map iframe {
-        height: 244px;
-        border: 1px solid var(--outline-variant);
-        border-radius: 14px;
-      }
     }
 
     @media (max-width: 420px) {

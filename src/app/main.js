@@ -26,6 +26,7 @@ function boot() {
     },
     onError: (message, hadExistingData) => statusPanel.setError(message, hadExistingData),
     onEventCount: (text) => statusPanel.setEventCount(text),
+    onRowTap: (event) => mapView.focusEventOnMap(event.EventNumber),
   });
 
   mount(SearchToggle, document.getElementById("search-toggle-slot"), {
@@ -54,7 +55,21 @@ function boot() {
     { passive: true }
   );
 
+  observeHeaderHeight();
   registerServiceWorker();
+}
+
+/** Keeps --header-height in sync with .app-header's real (sticky, but
+ * variable -- the search bar's open/closed state changes it) rendered
+ * height, so the sticky .map-panel below it (index.html) can sit flush
+ * under the header instead of at a hardcoded offset that would either
+ * gap or overlap depending on search-bar state. */
+function observeHeaderHeight() {
+  const header = document.querySelector(".app-header");
+  if (!header || !("ResizeObserver" in window)) return;
+  const sync = () => document.documentElement.style.setProperty("--header-height", `${header.offsetHeight}px`);
+  new ResizeObserver(sync).observe(header);
+  sync();
 }
 
 async function registerServiceWorker() {
