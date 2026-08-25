@@ -160,6 +160,24 @@
       background: var(--surface-container-highest) !important;
     }
 
+    .leaflet-tooltip.road-label {
+      background: rgba(10, 10, 13, 0.85);
+      border: 1px solid var(--outline-variant);
+      color: var(--on-surface-variant);
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      padding: 1px 6px;
+      border-radius: 3px;
+      box-shadow: none;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .leaflet-tooltip.road-label::before {
+      display: none; /* hide Leaflet's default tooltip pointer triangle */
+    }
+
     .call-marker {
       position: relative;
       display: block;

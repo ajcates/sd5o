@@ -1,4 +1,4 @@
-import { test, before, after } from "node:test";
+import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -11,28 +11,29 @@ const packBytes = readFileSync(packPath);
 let originalFetch;
 before(() => {
   originalFetch = globalThis.fetch;
-  // geocoder.js fetches a relative URL ("offgeo/packs/v0/sd-06073.ogp0")
-  // meant for a browser page's own origin -- serve the real pack bytes
-  // from disk here instead of standing up an HTTP server for this test.
-  globalThis.fetch = async (url) => {
-    if (String(url).includes("sd-06073.ogp0")) {
-      return {
-        ok: true,
-        status: 200,
-        arrayBuffer: async () => packBytes.buffer.slice(packBytes.byteOffset, packBytes.byteOffset + packBytes.byteLength),
-      };
-    }
-    throw new Error(`unexpected fetch: ${url}`);
-  };
+  // pack-engine.js fetches a relative URL meant for a browser page's (or
+  // worker's) own origin -- serve the real pack bytes from disk here
+  // instead of standing up an HTTP server for this test.
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    arrayBuffer: async () =>
+      packBytes.buffer.slice(packBytes.byteOffset, packBytes.byteOffset + packBytes.byteLength),
+  });
 });
 after(() => {
   globalThis.fetch = originalFetch;
 });
 
-// Import after the fetch mock is installed isn't required here since
-// geocoder.js only calls fetch() lazily inside geocode()/getRoadLinesNear(),
-// not at module-load time -- a top-level dynamic import is fine.
-const { geocode, getRoadLinesNear } = await import("../../src/offgeo/geocoder.js");
+// This is the exact module pack-worker.js runs inside the real Web
+// Worker -- tested directly here since Node has no global `Worker` to
+// exercise the worker boundary itself (that's covered by the real
+// Chromium E2E run in tests/e2e/run.mjs instead).
+const { geocode, getRoadLinesNear, _resetStateForTests } = await import("../../src/offgeo/pack-engine.js");
+
+beforeEach(() => {
+  _resetStateForTests();
+});
 
 test("geocodes a real known landmark within a plausible distance of its real coordinate", async () => {
   // 611 W G St, downtown San Diego -- one of the three real SanGIS
@@ -83,15 +84,40 @@ test("getRoadLinesNear returns ORDINARY-confidence lines within the given bounds
   const bounds = { minLat: 32.70, maxLat: 32.72, minLon: -117.18, maxLon: -117.16 };
   const lines = await getRoadLinesNear(bounds);
   assert.ok(lines.length > 0, "expected at least one road line near downtown San Diego");
-  for (const line of lines.slice(0, 5)) {
-    assert.ok(Array.isArray(line));
-    assert.ok(line.length >= 2);
-    assert.ok(Array.isArray(line[0]) && line[0].length === 2);
+  for (const { points, label } of lines.slice(0, 5)) {
+    assert.ok(Array.isArray(points));
+    assert.ok(points.length >= 2);
+    assert.ok(Array.isArray(points[0]) && points[0].length === 2);
+    assert.ok(label === null || typeof label === "string");
   }
+});
+
+test("getRoadLinesNear labels at most one segment per distinct street name", async () => {
+  const bounds = { minLat: 32.70, maxLat: 32.72, minLon: -117.18, maxLon: -117.16 };
+  const lines = await getRoadLinesNear(bounds);
+  const labels = lines.map((l) => l.label).filter(Boolean);
+  assert.ok(labels.length > 0, "expected at least one labeled street");
+  assert.equal(labels.length, new Set(labels).size, "labels should be unique -- one per street name, not per segment");
 });
 
 test("getRoadLinesNear returns nothing for a bounding box far outside the county", async () => {
   const bounds = { minLat: 0, maxLat: 0.01, minLon: 0, maxLon: 0.01 };
   const lines = await getRoadLinesNear(bounds);
   assert.equal(lines.length, 0);
+});
+
+test("getRoadLinesNear stays fast for a world-spanning bounding box (regression)", async () => {
+  // Real bug found live: Leaflet's getBounds() at very low (zoomed-out)
+  // zoom legitimately spans most of the globe. Without clamping the
+  // query to the pack's own known extent first, the grid-cell loop
+  // iterated the whole requested range regardless of where the actual
+  // data was -- a measured 25+ second stall in the browser. This must
+  // stay well under a second.
+  const worldBounds = { minLat: -85, maxLat: 85, minLon: -180, maxLon: 180 };
+  const t0 = Date.now();
+  const lines = await getRoadLinesNear(worldBounds);
+  const elapsedMs = Date.now() - t0;
+  assert.ok(elapsedMs < 3000, `expected well under 3s, took ${elapsedMs}ms`);
+  assert.ok(lines.length > 0, "a world-spanning box should still match San Diego County roads");
+  assert.ok(lines.length <= 600, "should still respect the MAX_LINES_PER_QUERY cap");
 });

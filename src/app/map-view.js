@@ -5,7 +5,7 @@ import { loadLeaflet } from "./leaflet-loader.js";
 
 const OPEN_ANIMATION_MS = 340;
 const NO_PULSE_AFTER_MINUTES = 120;
-const ROAD_LINES_BOUNDS_PADDING_DEG = 0.01; // ~1.1km at this latitude, a little surrounding-street context
+const ROADS_REFRESH_DEBOUNCE_MS = 350;
 
 /** Age -> pulse animation parameters. Newer calls pulse faster, bigger,
  * and more opaquely; the effect fades out and stops entirely once a call
@@ -45,6 +45,8 @@ export class MapView extends Component {
     this.leafletMap = null;
     this.markersLayer = null;
     this.roadsLayer = null;
+    this.roadsRefreshTimer = null;
+    this.roadsRequestSeq = 0;
     this.latestEvents = [];
 
     this.toggleButton = document.createElement("button");
@@ -83,7 +85,12 @@ export class MapView extends Component {
 
     const L = await loadLeaflet();
     const canvas = this.root.querySelector("#map-canvas");
-    this.leafletMap = L.map(canvas, { attributionControl: false }).setView([32.9, -117.0], 9);
+    // preferCanvas: road lines can be a couple thousand polylines at
+    // once (see getRoadLinesNear's own cap) -- Leaflet's default SVG
+    // renderer gives each one its own DOM node, which is real,
+    // measurable jank at that count; canvas draws them all into one
+    // element instead.
+    this.leafletMap = L.map(canvas, { attributionControl: false, preferCanvas: true }).setView([32.9, -117.0], 9);
     L.control
       .attribution({ prefix: "Leaflet" })
       .addAttribution("Roads: SanGIS")
@@ -91,31 +98,59 @@ export class MapView extends Component {
     this.markersLayer = L.layerGroup().addTo(this.leafletMap);
     this.roadsLayer = L.layerGroup().addTo(this.leafletMap);
 
+    // Road lines follow the current viewport, not a fixed area computed
+    // once: only the visible bounds are fetched and redrawn as the map
+    // pans/zooms, debounced so a drag gesture doesn't fire a burst of
+    // worker requests.
+    this.leafletMap.on("moveend", () => this.scheduleRoadsRefresh());
+
     await this.updateMarkers(this.latestEvents);
+    this.scheduleRoadsRefresh();
   }
 
-  /** Road-line visual backdrop, derived from the same OffGeo pack
-   * already loaded for geocoding (no second network fetch, unlike the
-   * old prototype's separate roads.json) -- ORDINARY-confidence
-   * segments within a padded box around the currently geocoded calls,
-   * not the full county (164k segments would overwhelm the map). */
-  async updateRoadsLayer(bounds) {
-    const L = window.L;
-    this.roadsLayer.clearLayers();
-    if (!bounds) return;
+  scheduleRoadsRefresh() {
+    clearTimeout(this.roadsRefreshTimer);
+    this.roadsRefreshTimer = setTimeout(() => this.refreshRoadsForViewport(), ROADS_REFRESH_DEBOUNCE_MS);
+  }
 
-    const padded = {
-      minLat: bounds.minLat - ROAD_LINES_BOUNDS_PADDING_DEG,
-      maxLat: bounds.maxLat + ROAD_LINES_BOUNDS_PADDING_DEG,
-      minLon: bounds.minLon - ROAD_LINES_BOUNDS_PADDING_DEG,
-      maxLon: bounds.maxLon + ROAD_LINES_BOUNDS_PADDING_DEG,
+  /** Road-line visual backdrop for whatever's currently on screen,
+   * derived from the same OffGeo pack already loaded for geocoding (no
+   * second network fetch, unlike the old prototype's separate
+   * roads.json) -- ORDINARY-confidence segments within the live
+   * viewport, evenly thinned by getRoadLinesNear itself when a wide
+   * viewport would otherwise match tens of thousands at once. A stale
+   * in-flight request whose viewport has since changed is dropped
+   * rather than drawn. */
+  async refreshRoadsForViewport() {
+    if (!this.roadsLayer || !this.leafletMap) return;
+
+    const requestId = ++this.roadsRequestSeq;
+    const L = window.L;
+    const view = this.leafletMap.getBounds().pad(0.2); // a little buffer past the visible edge
+    const bounds = {
+      minLat: view.getSouth(),
+      maxLat: view.getNorth(),
+      minLon: view.getWest(),
+      maxLon: view.getEast(),
     };
-    const lines = await getRoadLinesNear(padded);
+    const lines = await getRoadLinesNear(bounds);
+    if (requestId !== this.roadsRequestSeq) return; // viewport moved again before this resolved
+
+    this.roadsLayer.clearLayers();
     // Polylines render in Leaflet's overlayPane (z-index 400) and markers
     // in markerPane (600), so markers already stack above roads without
     // needing an explicit bringToBack() (LayerGroup doesn't have one).
-    for (const line of lines) {
-      L.polyline(line, { color: "#5a5a68", weight: 1, opacity: 0.7, interactive: false }).addTo(this.roadsLayer);
+    for (const { points, label } of lines) {
+      const line = L.polyline(points, { color: "#5a5a68", weight: 1, opacity: 0.7, interactive: false }).addTo(
+        this.roadsLayer
+      );
+      // getRoadLinesNear labels at most one segment per distinct street
+      // name in the result (not one per segment -- a street split into
+      // many ROADSEGID pieces would otherwise repeat its own name down
+      // its whole length), so this fires once per visible street.
+      if (label) {
+        line.bindTooltip(label, { permanent: true, direction: "center", className: "road-label" });
+      }
     }
   }
 
@@ -142,26 +177,19 @@ export class MapView extends Component {
     );
 
     const fitBoundsPoints = [];
-    let bbox = null;
     for (const item of geocoded) {
       if (!item) continue;
       const { event, point } = item;
       const marker = this.buildMarker(L, event, point);
       marker.addTo(this.markersLayer);
       fitBoundsPoints.push([point.lat, point.lon]);
-      if (!bbox) {
-        bbox = { minLat: point.lat, maxLat: point.lat, minLon: point.lon, maxLon: point.lon };
-      } else {
-        bbox.minLat = Math.min(bbox.minLat, point.lat);
-        bbox.maxLat = Math.max(bbox.maxLat, point.lat);
-        bbox.minLon = Math.min(bbox.minLon, point.lon);
-        bbox.maxLon = Math.max(bbox.maxLon, point.lon);
-      }
     }
     if (fitBoundsPoints.length) {
+      // fitBounds' own viewport change fires "moveend", which refreshes
+      // the road-line layer for the new view (see scheduleRoadsRefresh) --
+      // no separate road-line call needed here.
       this.leafletMap.fitBounds(fitBoundsPoints, { padding: [24, 24], maxZoom: 14 });
     }
-    await this.updateRoadsLayer(bbox);
   }
 
   buildMarker(L, event, point) {

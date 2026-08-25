@@ -20,7 +20,7 @@ Probed with: playwright-core driving system Chromium (`/usr/bin/chromium`), vers
 | Geolocation (`navigator.geolocation`) | Yes | Keep calls/geocoding usable; explicit recovery action |
 | Secure context (`isSecureContext`) | Yes | Several APIs above are unavailable outside a secure context by spec |
 
-Storage estimate sample from this probe run: `{"quota":6442474184,"usage":23240,"usageDetails":{"caches":22838,"serviceWorkerRegistrations":402}}`.
+Storage estimate sample from this probe run: `{"quota":6442474688,"usage":23744,"usageDetails":{"caches":23342,"serviceWorkerRegistrations":402}}`.
 
 ## Required degraded/unsupported behavior (per `spec.md`)
 
