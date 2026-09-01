@@ -611,31 +611,58 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 18px;
-      padding: 12px 14px;
+      gap: 8px;
+      min-height: 44px;
+      padding: 3px 6px;
       background: var(--surface-container-high);
       border-bottom: 1px solid var(--outline-variant);
     }
 
     .distance-explanation {
-      display: grid;
+      display: flex;
+      flex: 1 1 auto;
+      align-items: center;
       min-width: 0;
-      gap: 2px;
+      gap: 6px;
+      overflow: hidden;
     }
 
     .distance-explanation strong {
-      font-size: 0.8rem;
+      flex: 0 0 auto;
+      font-size: 0.72rem;
       font-weight: 700;
     }
 
-    .distance-explanation span {
-      color: var(--on-surface-variant);
-      font-size: 0.7rem;
+    .distance-explanation > svg {
+      flex: 0 0 auto;
+      width: 16px;
+      height: 16px;
+      fill: var(--primary);
     }
 
-    .distance-controls.unavailable .distance-explanation span,
-    .distance-controls.error .distance-explanation span {
+    .distance-compact-state {
+      overflow: hidden;
+      color: var(--on-surface-variant);
+      font-size: 0.64rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .distance-controls.unavailable .distance-compact-state,
+    .distance-controls.error .distance-compact-state {
       color: var(--error);
+    }
+
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      clip: rect(0, 0, 0, 0) !important;
+      overflow: hidden !important;
+      white-space: nowrap !important;
+      border: 0 !important;
     }
 
     .distance-actions,
@@ -643,36 +670,29 @@
       display: flex;
       flex: 0 0 auto;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
 
     .sort-control {
-      padding: 3px;
+      padding: 1px;
       background: var(--surface-container-highest);
       border: 1px solid var(--outline-variant);
-      border-radius: 10px;
-    }
-
-    .sort-control > span {
-      padding: 0 5px;
-      color: var(--on-surface-variant);
-      font-size: 0.64rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
+      border-radius: 9px;
     }
 
     .sort-control button,
-    .text-button {
-      min-height: 30px;
-      padding: 5px 9px;
+    .distance-tool-button {
+      display: grid;
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      place-items: center;
       color: var(--on-surface-variant);
       background: transparent;
       border: 0;
       border-radius: 7px;
       cursor: pointer;
-      font-size: 0.7rem;
-      font-weight: 700;
     }
 
     .sort-control button[aria-pressed="true"] {
@@ -681,28 +701,38 @@
     }
 
     .sort-control button:disabled,
-    .text-button:disabled {
+    .distance-tool-button:disabled {
       cursor: not-allowed;
       opacity: 0.42;
     }
 
     .sort-control button:focus-visible,
-    .text-button:focus-visible {
+    .distance-tool-button:focus-visible {
       outline: 2px solid var(--primary);
       outline-offset: 1px;
     }
 
-    .text-button {
+    .sort-control svg,
+    .distance-tool-button svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    .distance-tool-button.primary {
       color: var(--on-primary-container);
       background: var(--primary-container);
       border: 1px solid rgba(77, 157, 255, 0.22);
-      white-space: nowrap;
     }
 
-    .text-button.quiet {
+    .distance-tool-button.quiet {
       color: var(--on-surface-variant);
       background: transparent;
-      border-color: var(--outline-variant);
+      border: 1px solid var(--outline-variant);
+    }
+
+    .distance-tool-button.busy svg {
+      animation: spin 720ms linear infinite;
     }
 
     table {
@@ -997,18 +1027,14 @@
       }
 
       .distance-controls {
-        align-items: stretch;
-        flex-direction: column;
-        gap: 10px;
         margin-bottom: 8px;
-        padding: 12px;
+        padding: 3px 6px;
         border: 1px solid var(--outline-variant);
         border-radius: 14px;
       }
 
       .distance-actions {
-        justify-content: space-between;
-        flex-wrap: wrap;
+        justify-content: flex-end;
       }
 
       thead {
@@ -1134,18 +1160,6 @@
         display: none;
       }
 
-      .distance-actions {
-        align-items: stretch;
-        flex-direction: column;
-      }
-
-      .sort-control {
-        justify-content: space-between;
-      }
-
-      .sort-control button {
-        flex: 1 1 auto;
-      }
     }
 
     @media (prefers-reduced-motion: reduce) {
