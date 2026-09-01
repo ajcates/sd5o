@@ -62,6 +62,7 @@ export class MapView extends Component {
     this.markersLayer = null;
     this.locationLayer = null;
     this.latestEvents = [];
+    this.userLocation = null;
     this.markerByEventNumber = new Map();
     this.markersBounds = null;
 
@@ -97,7 +98,6 @@ export class MapView extends Component {
 
     this.ensureMapInitialized().then(() => {
       setTimeout(() => this.leafletMap.invalidateSize(), OPEN_ANIMATION_MS);
-      this.requestUserLocation();
     });
   }
 
@@ -142,24 +142,17 @@ export class MapView extends Component {
     this.leafletMap.setView(marker.getLatLng(), 16, { animate: true });
   }
 
-  /** Prompts for geolocation permission on map open (never on page
-   * load) and, if granted, drops a "you are here" marker + accuracy
-   * circle. Denial/timeout/unsupported all fail silently -- location is
-   * a nice-to-have overlay here, never something that blocks the map or
-   * the calls list, matching this project's own stated location-UX
-   * principle (see notes/offgeo/spec.md's location-state requirements).
-   * The browser only ever prompts once; later calls just resolve
-   * immediately against the stored permission decision, so it's safe to
-   * call this on every open, not just the first. */
-  requestUserLocation() {
-    if (!("geolocation" in navigator)) return;
-    navigator.geolocation.getCurrentPosition(
-      (position) => this.showUserLocation(position.coords),
-      (error) => {
-        console.log("[map-view] geolocation unavailable:", error.message);
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
-    );
+  /** Location is acquired by main.js only after the user presses the
+   * explained "Use my location" action. MapView receives the in-memory
+   * reading for its marker but never requests or persists coordinates. */
+  setUserLocation(coords) {
+    this.userLocation = coords;
+    if (this.locationLayer) this.showUserLocation(coords);
+  }
+
+  clearUserLocation() {
+    this.userLocation = null;
+    this.locationLayer?.clearLayers();
   }
 
   showUserLocation(coords) {
@@ -200,6 +193,7 @@ export class MapView extends Component {
     L.control.attribution({ prefix: "Leaflet" }).addTo(this.leafletMap);
     this.markersLayer = L.layerGroup().addTo(this.leafletMap);
     this.locationLayer = L.layerGroup().addTo(this.leafletMap);
+    if (this.userLocation) this.showUserLocation(this.userLocation);
 
     await this.updateMarkers(this.latestEvents);
   }

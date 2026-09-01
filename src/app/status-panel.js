@@ -1,8 +1,8 @@
-import { Component, html } from "../framework/core.js";
-import { prettyTime } from "./format.js";
+import { Component, html, raw } from "../framework/core.js";
+import { compactElapsedTime } from "./format.js";
 
-/** Owns #status-panel's inner markup: the "Live incident feed" summary line
- * and the connecting/live/error status text + call count. Previously this
+/** Owns #status-panel's inner markup: the compact "Incident feed refreshed
+ * 1m20s ago" summary and the connecting/live/error status text + call count. Previously this
  * was a handful of scattered classList/textContent calls spread across
  * CallsForService.addTable (index.html:1234-1295) -- see
  * notes/offgeo/index-html-audit.md Part B finding 2. */
@@ -27,8 +27,8 @@ export class StatusPanel extends Component {
     this.setState({ phase: "loading", statusText });
   }
 
-  setLive({ rawTime, eventCountText }) {
-    this.setState({ phase: "live", rawTime, statusText: "Live", eventCountText });
+  setLive({ eventCountText }) {
+    this.setState({ phase: "live", rawTime: new Date(), statusText: "Live", eventCountText });
   }
 
   /** @param {boolean} hadExistingData - if true, this is a background
@@ -58,20 +58,34 @@ export class StatusPanel extends Component {
     }
   }
 
+  refreshFeed() {
+    if (this.state.phase !== "loading") this.props.onRefresh?.();
+  }
+
   render() {
     const { phase, rawTime, statusText, eventCountText } = this.state;
-    const updateText = rawTime ? prettyTime(rawTime) : phase === "error" ? "unavailable" : "loading…";
+    const updateText =
+      phase === "loading"
+        ? "Incident feed refreshing…"
+        : rawTime
+          ? `Incident feed refreshed ${compactElapsedTime(rawTime)}`
+          : phase === "error"
+            ? "Incident feed unavailable"
+            : "Incident feed refreshing…";
     return html`
-      <div class="feed-summary">
+      <button
+        type="button"
+        class="feed-summary"
+        data-on-click="refreshFeed"
+        aria-label="Refresh incident feed"
+        title="Refresh incident feed"
+        ${raw(phase === "loading" ? "disabled" : "")}
+      >
         <span class="status-dot" aria-hidden="true"></span>
         <div>
-          <span class="status-label">Live incident feed</span>
-          <p class="update-line">
-            Last updated
-            <span data-time="${rawTime || ""}" id="update">${updateText}</span>
-          </p>
+          <p class="update-line" data-time="${rawTime || ""}" id="update">${updateText}</p>
         </div>
-      </div>
+      </button>
       <div class="status-meta">
         <span id="calls-status" role="status" aria-live="polite" class="${phase === "error" ? "error" : ""}"
           >${statusText}</span

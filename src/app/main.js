@@ -11,7 +11,10 @@ import { MapView } from "./map-view.js";
  * adding one. The dead Nearby/geocoder feature (index.html:952-1107) is
  * deliberately not ported; see the audit for why. */
 function boot() {
-  const statusPanel = mount(StatusPanel, document.getElementById("status-panel"), {});
+  const statusPanel = mount(StatusPanel, document.getElementById("status-panel"), {
+    onRefresh: () => callsList.refresh(),
+  });
+  let locationRequestId = 0;
 
   const mapView = mount(MapView, document.getElementById("map-panel"), {
     buttonsContainerId: "map-toggle-slot",
@@ -26,8 +29,52 @@ function boot() {
     },
     onError: (message, hadExistingData) => statusPanel.setError(message, hadExistingData),
     onEventCount: (text) => statusPanel.setEventCount(text),
-    onRowTap: (event) => mapView.focusEventOnMap(event.EventNumber),
+    onRowTap: async (event) => {
+      await mapView.focusEventOnMap(event.EventNumber);
+      callsList.focusEvent(event.EventNumber);
+    },
+    onRequestLocation: requestUserLocation,
+    onStopLocation: stopUsingLocation,
   });
+
+  function requestUserLocation() {
+    const requestId = ++locationRequestId;
+    callsList.setLocationPending();
+    if (!("geolocation" in navigator)) {
+      callsList.setLocationUnavailable("Location is not supported by this browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (requestId !== locationRequestId) return;
+        const coords = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: position.timestamp,
+        };
+        callsList.setUserLocation(coords);
+        mapView.setUserLocation(coords);
+      },
+      (error) => {
+        if (requestId !== locationRequestId) return;
+        const message =
+          error.code === 1
+            ? "Location permission was denied. Allow location for this site, then try again."
+            : error.code === 3
+              ? "Location timed out. Try again where your device has a clearer signal."
+              : "Your location is currently unavailable. Please try again.";
+        callsList.setLocationUnavailable(message);
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+    );
+  }
+
+  function stopUsingLocation() {
+    locationRequestId += 1;
+    callsList.clearUserLocation();
+    mapView.clearUserLocation();
+  }
 
   mount(SearchToggle, document.getElementById("search-toggle-slot"), {
     searchBarId: "search-bar",
@@ -40,7 +87,7 @@ function boot() {
 
   callsList.load();
 
-  setInterval(() => statusPanel.refreshRelativeTime(), 60000);
+  setInterval(() => statusPanel.refreshRelativeTime(), 1000);
 
   let lastScrollY = window.scrollY;
   window.addEventListener(

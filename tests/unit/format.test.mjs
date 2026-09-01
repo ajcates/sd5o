@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { ageMinutes, prettyTime, fetchJson } from "../../src/app/format.js";
+import { ageMinutes, compactElapsedTime, prettyTime, fetchJson } from "../../src/app/format.js";
 
 function feedDateString(date) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -19,6 +19,12 @@ test("prettyTime() renders a relative-time string for a recent timestamp", () =>
   const tenMinutesAgo = new Date(Date.now() - 10 * 60_000);
   const text = prettyTime(feedDateString(tenMinutesAgo));
   assert.match(text, /ago|minute/i);
+});
+
+test("compactElapsedTime() renders the compact feed refresh age", () => {
+  assert.match(compactElapsedTime(new Date(Date.now() - 10_000)), /^(9|10)s ago$/);
+  assert.match(compactElapsedTime(new Date(Date.now() - 80_000)), /^1m(19|20)s ago$/);
+  assert.match(compactElapsedTime(new Date(Date.now() - (2 * 60 + 5) * 60_000)), /^2h(4|5)m ago$/);
 });
 
 let originalFetch;

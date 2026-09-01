@@ -442,6 +442,28 @@
       align-items: center;
       gap: 11px;
       min-width: 0;
+      padding: 5px 7px;
+      color: inherit;
+      background: transparent;
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 140ms var(--ease-standard);
+    }
+
+    .feed-summary:hover {
+      background: var(--surface-container-high);
+    }
+
+    .feed-summary:disabled {
+      cursor: wait;
+      opacity: 0.9;
+    }
+
+    .feed-summary:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
     }
 
     .status-dot {
@@ -468,16 +490,6 @@
       background: var(--error);
       border-color: rgba(255, 107, 107, 0.3);
       box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.1);
-    }
-
-    .status-label {
-      display: block;
-      margin-bottom: 1px;
-      color: var(--on-surface-variant);
-      font-size: 0.66rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
     }
 
     .update-line {
@@ -579,6 +591,104 @@
       font-size: 1.05rem;
     }
 
+    .distance-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 12px 14px;
+      background: var(--surface-container-high);
+      border-bottom: 1px solid var(--outline-variant);
+    }
+
+    .distance-explanation {
+      display: grid;
+      min-width: 0;
+      gap: 2px;
+    }
+
+    .distance-explanation strong {
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .distance-explanation span {
+      color: var(--on-surface-variant);
+      font-size: 0.7rem;
+    }
+
+    .distance-controls.unavailable .distance-explanation span,
+    .distance-controls.error .distance-explanation span {
+      color: var(--error);
+    }
+
+    .distance-actions,
+    .sort-control {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sort-control {
+      padding: 3px;
+      background: var(--surface-container-highest);
+      border: 1px solid var(--outline-variant);
+      border-radius: 10px;
+    }
+
+    .sort-control > span {
+      padding: 0 5px;
+      color: var(--on-surface-variant);
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .sort-control button,
+    .text-button {
+      min-height: 30px;
+      padding: 5px 9px;
+      color: var(--on-surface-variant);
+      background: transparent;
+      border: 0;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .sort-control button[aria-pressed="true"] {
+      color: var(--on-primary-container);
+      background: var(--primary-container);
+    }
+
+    .sort-control button:disabled,
+    .text-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+
+    .sort-control button:focus-visible,
+    .text-button:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 1px;
+    }
+
+    .text-button {
+      color: var(--on-primary-container);
+      background: var(--primary-container);
+      border: 1px solid rgba(77, 157, 255, 0.22);
+      white-space: nowrap;
+    }
+
+    .text-button.quiet {
+      color: var(--on-surface-variant);
+      background: transparent;
+      border-color: var(--outline-variant);
+    }
+
     table {
       width: 100%;
       border-collapse: separate;
@@ -609,17 +719,22 @@
 
     th.Address,
     td.Address {
-      width: 42%;
+      width: 36%;
     }
 
     th.DateTime,
     td.DateTime {
-      width: 20%;
+      width: 18%;
+    }
+
+    th.Distance,
+    td.Distance {
+      width: 14%;
     }
 
     th.EventType,
     td.EventType {
-      width: 38%;
+      width: 32%;
     }
 
     tbody tr:not(.map) {
@@ -716,6 +831,26 @@
       color: var(--on-surface-variant);
       font-variant-numeric: tabular-nums;
       font-size: 0.82rem;
+    }
+
+    td.Distance {
+      color: var(--on-surface-variant);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .distance-chip {
+      display: inline-flex;
+      padding: 2px 7px;
+      color: var(--on-primary-container);
+      background: var(--primary-container);
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .distance-unavailable {
+      color: var(--outline);
     }
 
     td.EventType {
@@ -845,6 +980,21 @@
         overflow: visible;
       }
 
+      .distance-controls {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 8px;
+        padding: 12px;
+        border: 1px solid var(--outline-variant);
+        border-radius: 14px;
+      }
+
+      .distance-actions {
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+
       thead {
         position: absolute;
         width: 1px;
@@ -895,6 +1045,8 @@
       td.Address,
       th.DateTime,
       td.DateTime,
+      th.Distance,
+      td.Distance,
       th.EventType,
       td.EventType {
         width: auto;
@@ -930,13 +1082,25 @@
         white-space: nowrap;
       }
 
-      td.EventType {
-        grid-column: 1 / -1;
+      td.Distance {
+        grid-column: 2 / 3;
         grid-row: 2;
+        align-self: center;
+        text-align: right;
+      }
+
+      td.EventType {
+        grid-column: 1 / 2;
+        grid-row: 2;
+        min-width: 0;
         padding-top: 8px;
         color: var(--primary);
         border-top: 1px solid var(--outline-variant);
         font-size: 0.82rem;
+      }
+
+      .distance-chip {
+        font-size: 0.68rem;
       }
 
     }
@@ -946,16 +1110,25 @@
         gap: 12px;
       }
 
-      .status-label {
-        font-size: 0.66rem;
-      }
-
       .update-line {
         font-size: 0.88rem;
       }
 
       #calls-status {
         display: none;
+      }
+
+      .distance-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .sort-control {
+        justify-content: space-between;
+      }
+
+      .sort-control button {
+        flex: 1 1 auto;
       }
     }
 

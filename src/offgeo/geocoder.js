@@ -15,6 +15,7 @@
 let worker = null;
 let nextId = 1;
 const pending = new Map();
+const resultCache = new Map();
 
 function getWorker() {
   if (!worker) {
@@ -47,5 +48,13 @@ function call(method, args) {
 /** Resolve a real calls-feed address string to a coordinate.
  * @returns {Promise<{lat:number, lon:number, confidence:'ORDINARY'|'FALLBACK'|'EXCLUDED', reason:string}|null>} */
 export function geocode(address) {
-  return call("geocode", [address]);
+  const key = String(address || "");
+  if (!resultCache.has(key)) {
+    const request = call("geocode", [address]).catch((error) => {
+      resultCache.delete(key);
+      throw error;
+    });
+    resultCache.set(key, request);
+  }
+  return resultCache.get(key);
 }

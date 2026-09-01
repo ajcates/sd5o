@@ -30,6 +30,24 @@ export function prettyTime(datestring) {
   return formatter.format(Math.round(hours / 24), "day");
 }
 
+/** Compact elapsed time for the feed status line: 10s ago, 1m20s ago. */
+export function compactElapsedTime(datestring) {
+  const elapsedSeconds = Math.max(0, Math.floor((new Date() - parseFeedDate(datestring)) / 1000));
+  if (elapsedSeconds < 60) return `${elapsedSeconds}s ago`;
+  if (elapsedSeconds < 3600) {
+    const minutes = Math.floor(elapsedSeconds / 60);
+    return `${minutes}m${elapsedSeconds % 60}s ago`;
+  }
+  if (elapsedSeconds < 86400) {
+    const hours = Math.floor(elapsedSeconds / 3600);
+    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+    return `${hours}h${minutes}m ago`;
+  }
+  const days = Math.floor(elapsedSeconds / 86400);
+  const hours = Math.floor((elapsedSeconds % 86400) / 3600);
+  return `${days}d${hours}h ago`;
+}
+
 export async function fetchJson(url) {
   const response = await fetch(url, { cache: "no-store" });
   const responseText = await response.text();

@@ -1,6 +1,8 @@
 import { Component, html, raw } from "../framework/core.js";
 import { fetchJson, prettyTime } from "./format.js";
 import { eventTypeColor, eventTypeCategoryName } from "./event-category.js";
+import { distanceMiles, formatAccuracyMeters, formatDistanceMiles } from "./distance.js";
+import { geocode } from "../offgeo/geocoder.js";
 
 // Only these feed fields are compared/persisted for the new/changed-row
 // cache diff. The previous version (index.html:1335-1354) stored the whole
@@ -47,10 +49,9 @@ function annotateWithCache(events) {
  * (selectRow) and text filter (applyFilter) intentionally stay outside
  * the render()/setState() cycle -- they mutate the already-rendered DOM
  * directly, exactly like the code they replace, so a filter keystroke or a
- * row selection is never wiped by an unrelated re-render. Only a data
- * refresh (load()) goes through the full render() rebuild, matching the
- * previous full-teardown-per-refresh behavior 1:1 (see audit finding 4) --
- * that behavior wasn't changed here, only reorganized. */
+ * row selection is never wiped by a filter keystroke. Data refreshes,
+ * distance completion, and sort changes intentionally rebuild the table;
+ * each of those changes the row data or row order itself. */
 export class CallsList extends Component {
   onCreate() {
     this.apiUrl = "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents";
@@ -63,6 +64,12 @@ export class CallsList extends Component {
     this.filterValue = "";
     this.filterInputEl = document.getElementById("filter");
     this.selectedRowTimeout = null;
+    this.userLocation = null;
+    this.distanceByEventNumber = new Map();
+    this.distanceGeneration = 0;
+    this.sortMode = "time";
+    this.locationStatus = "idle";
+    this.locationMessage = "";
     this.state = { phase: "loading", events: [], errorMessage: "" };
   }
 
@@ -87,6 +94,7 @@ export class CallsList extends Component {
       const events = annotateWithCache(json.Events);
       this.setState({ phase: "live", events });
       this.props.onLoaded?.({ rawTime: json.LastUpdated, count: events.length, events });
+      if (this.userLocation) this.resolveDistances(events);
     } catch (error) {
       console.error("Unable to load calls for service:", error);
       this.props.onError?.(error.message, hadExistingData);
@@ -98,6 +106,105 @@ export class CallsList extends Component {
 
   refresh() {
     return this.load();
+  }
+
+  setLocationPending() {
+    this.locationStatus = "locating";
+    this.locationMessage = "Finding your location…";
+    this.update();
+  }
+
+  setLocationUnavailable(message) {
+    this.locationStatus = "unavailable";
+    this.locationMessage = message;
+    this.update();
+  }
+
+  setUserLocation(coords) {
+    this.userLocation = coords;
+    this.distanceByEventNumber.clear();
+    this.locationStatus = "calculating";
+    this.locationMessage = "Calculating straight-line distances…";
+    this.update();
+    this.resolveDistances(this.state.events);
+  }
+
+  clearUserLocation() {
+    this.distanceGeneration += 1;
+    this.userLocation = null;
+    this.distanceByEventNumber.clear();
+    this.locationStatus = "idle";
+    this.locationMessage = "";
+    this.sortMode = "time";
+    this.update();
+  }
+
+  requestLocation() {
+    this.props.onRequestLocation?.();
+  }
+
+  refreshLocation() {
+    this.props.onRequestLocation?.();
+  }
+
+  stopUsingLocation() {
+    this.props.onStopLocation?.();
+  }
+
+  sortByTime() {
+    if (this.sortMode === "time") return;
+    this.sortMode = "time";
+    this.update();
+  }
+
+  sortByDistance() {
+    if (this.locationStatus !== "ready") return;
+    this.sortMode = "distance";
+    this.update();
+  }
+
+  async resolveDistances(events) {
+    if (!this.userLocation) return;
+    this.distanceByEventNumber = new Map();
+    if (events.length === 0) {
+      this.locationStatus = "ready";
+      this.locationMessage = formatAccuracyMeters(this.userLocation.accuracy);
+      this.update();
+      return;
+    }
+    if (this.locationStatus !== "calculating") {
+      this.locationStatus = "calculating";
+      this.locationMessage = "Updating straight-line distances…";
+      this.update();
+    }
+    const generation = ++this.distanceGeneration;
+    const userLocation = this.userLocation;
+    const settled = await Promise.allSettled(
+      events.map(async (event) => {
+        const point = await geocode(event.Address);
+        const miles = point
+          ? distanceMiles(userLocation, { latitude: point.lat, longitude: point.lon })
+          : null;
+        return [event.EventNumber, miles];
+      })
+    );
+    if (generation !== this.distanceGeneration || this.userLocation !== userLocation) return;
+
+    const nextDistances = new Map();
+    let failures = 0;
+    for (const result of settled) {
+      if (result.status === "fulfilled") nextDistances.set(...result.value);
+      else failures += 1;
+    }
+    if (failures === events.length) {
+      this.locationStatus = "error";
+      this.locationMessage = "Call locations could not be calculated. Your calls list is still available.";
+    } else {
+      this.distanceByEventNumber = nextDistances;
+      this.locationStatus = "ready";
+      this.locationMessage = formatAccuracyMeters(userLocation.accuracy);
+    }
+    this.update();
   }
 
   setFilter(value) {
@@ -137,10 +244,36 @@ export class CallsList extends Component {
       this.filterInputEl.value = "";
       this.setFilter("");
     }
-    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    this.scrollRowBelowStickyPanels(row);
     row.classList.add("selected");
     clearTimeout(this.selectedRowTimeout);
     this.selectedRowTimeout = setTimeout(() => row.classList.remove("selected"), 2000);
+  }
+
+  /** A normal scrollIntoView({block:'start'}) places the selected row
+   * behind the sticky header and open sticky map. Place its top just
+   * below the lowest sticky panel instead, with a small visual gutter. */
+  scrollRowBelowStickyPanels(row) {
+    const desiredTop = () => {
+      const header = document.querySelector(".app-header");
+      const mapPanel = document.querySelector(".map-panel.open");
+      return (
+        Math.max(header?.getBoundingClientRect().bottom || 0, mapPanel?.getBoundingClientRect().bottom || 0) + 12
+      );
+    };
+    const targetTop = Math.max(0, window.scrollY + row.getBoundingClientRect().top - desiredTop());
+    const behavior = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    window.scrollTo({ top: targetTop, behavior });
+
+    // A sticky panel can still be finishing its height transition while
+    // the smooth scroll runs. Correct only if the final expanded panel
+    // actually occludes the row; this second pass is deliberately instant
+    // so it cannot race another animation and settle behind the map again.
+    setTimeout(() => {
+      if (!row.isConnected) return;
+      const adjustment = row.getBoundingClientRect().top - desiredTop();
+      if (adjustment < 0) window.scrollBy({ top: adjustment, behavior: "auto" });
+    }, 500);
   }
 
   /** Tapping a row zooms the top map panel to that call's location
@@ -170,6 +303,10 @@ export class CallsList extends Component {
     const mapsHref = `https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(address)}`;
     const categoryColor = eventTypeColor(event.EventType);
     const categoryName = eventTypeCategoryName(event.EventType);
+    const distance = formatDistanceMiles(this.distanceByEventNumber.get(event.EventNumber));
+    const distanceMarkup = distance
+      ? `<span class="distance-chip" aria-label="${distance.accessible}">${distance.visible}</span>`
+      : `<span class="distance-unavailable" aria-label="Straight-line distance unavailable">—</span>`;
     // The left-edge color now carries the dispatch category (matching
     // the map marker's fill color, see event-category.js), so "new"/
     // "changed" -- previously shown the same way, by swapping that
@@ -192,6 +329,9 @@ export class CallsList extends Component {
           </a>
         </td>
         <td data-label="DateTime" class="DateTime" title="${event.DateTime}">${prettyTime(event.DateTime)}</td>
+        <td data-label="Distance" class="Distance" title="Straight-line distance from your location">
+          ${raw(distanceMarkup)}
+        </td>
         <td data-label="EventType" class="EventType">${event.EventType}</td>
       </tr>
     `;
@@ -220,16 +360,15 @@ export class CallsList extends Component {
         </div>
       `;
     }
-    // The feed's own array order gets visually reversed by this render
-    // (newest last in the array ends up first in the table) to match the
-    // previous tbody.prepend()-per-row behavior exactly.
-    const rows = [...this.state.events].reverse().map((event, i) => this.renderRow(event, i));
+    const rows = this.sortedEvents().map((event, i) => this.renderRow(event, i));
     return html`
+      ${raw(this.renderDistanceControls())}
       <table>
         <thead>
           <tr>
             <th class="Address">Address</th>
             <th class="DateTime">DateTime</th>
+            <th class="Distance" title="Straight-line distance from your location">Distance</th>
             <th class="EventType">EventType</th>
           </tr>
         </thead>
@@ -238,5 +377,57 @@ export class CallsList extends Component {
         </tbody>
       </table>
     `;
+  }
+
+  sortedEvents() {
+    // Preserve the feed's established newest-first display order as the
+    // stable baseline. Nearest sorting puts unmatched calls last, then
+    // falls back to this order when distances are equal.
+    const newestFirst = [...this.state.events].reverse();
+    if (this.sortMode !== "distance") return newestFirst;
+    return newestFirst
+      .map((event, index) => ({ event, index, distance: this.distanceByEventNumber.get(event.EventNumber) }))
+      .sort((a, b) => {
+        const aKnown = Number.isFinite(a.distance);
+        const bKnown = Number.isFinite(b.distance);
+        if (aKnown && bKnown && a.distance !== b.distance) return a.distance - b.distance;
+        if (aKnown !== bKnown) return aKnown ? -1 : 1;
+        return a.index - b.index;
+      })
+      .map(({ event }) => event);
+  }
+
+  renderDistanceControls() {
+    const isReady = this.locationStatus === "ready";
+    const busy = this.locationStatus === "locating" || this.locationStatus === "calculating";
+    const statusText =
+      this.locationStatus === "idle"
+        ? "Your location stays on this device and is used only to calculate approximate straight-line distance."
+        : this.locationStatus === "ready"
+          ? `Distances are approximate street-range matches. ${this.locationMessage}`
+          : this.locationMessage;
+    const locationAction = isReady
+      ? `<button type="button" class="text-button" data-on-click="refreshLocation">Refresh location</button>
+         <button type="button" class="text-button quiet" data-on-click="stopUsingLocation">Stop</button>`
+      : `<button type="button" class="text-button" data-on-click="requestLocation"${busy ? " disabled" : ""}>${
+          busy ? "Working…" : "Use my location"
+        }</button>`;
+    return `
+      <section class="distance-controls ${this.locationStatus}" aria-label="Distance and sorting controls">
+        <div class="distance-explanation">
+          <strong>Distance from you</strong>
+          <span role="status" aria-live="polite">${statusText}</span>
+        </div>
+        <div class="distance-actions">
+          <div class="sort-control" aria-label="Sort calls">
+            <span>Sort</span>
+            <button type="button" data-on-click="sortByTime" aria-pressed="${this.sortMode === "time"}">Newest</button>
+            <button type="button" data-on-click="sortByDistance" aria-pressed="${
+              this.sortMode === "distance"
+            }"${isReady ? "" : " disabled"}>Nearest</button>
+          </div>
+          ${locationAction}
+        </div>
+      </section>`;
   }
 }
