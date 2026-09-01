@@ -50,8 +50,8 @@ export class StatusPanel extends Component {
     this.setState({ eventCountText });
   }
 
-  /** Re-render just to recompute the "X minutes ago" text against the
-   * clock, without changing any stored data. Called on a 60s tick. */
+  /** Re-render just to recompute the seconds-accurate "X ago" text
+   * against the clock while the page is visible. */
   refreshRelativeTime() {
     if (this.state.rawTime) {
       this.update();
@@ -79,12 +79,14 @@ export class StatusPanel extends Component {
         data-on-click="refreshFeed"
         aria-label="Refresh incident feed"
         title="Refresh incident feed"
+        aria-busy="${phase === "loading"}"
         ${raw(phase === "loading" ? "disabled" : "")}
       >
         <span class="status-dot" aria-hidden="true"></span>
         <div>
           <p class="update-line" data-time="${rawTime || ""}" id="update">${updateText}</p>
         </div>
+        <svg class="feed-refresh-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.1A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h8V3l-3.35 3.35Z"/></svg>
       </button>
       <div class="status-meta">
         <span id="calls-status" role="status" aria-live="polite" class="${phase === "error" ? "error" : ""}"

@@ -7,6 +7,14 @@ import { eventTypeColor, eventTypeCategoryName } from "./event-category.js";
 const OPEN_ANIMATION_MS = 340;
 const NO_PULSE_AFTER_MINUTES = 120;
 
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
+function mapMotionOptions(options = {}) {
+  return { ...options, animate: !prefersReducedMotion() };
+}
+
 // OpenStreetMap's tile server, fetched live from the visitor's own
 // browser -- a different usage pattern from bulk-mirroring tiles as
 // static files (which the earlier custom road-line-only map explicitly
@@ -66,6 +74,9 @@ export class MapView extends Component {
     this.selectedEventNumber = null;
     this.markerByEventNumber = new Map();
     this.markersBounds = null;
+    this.hasFitInitialMarkers = false;
+    this.legendOpen = false;
+    this.noticeTimeout = null;
 
     this.toggleButton = document.createElement("button");
     this.toggleButton.type = "button";
@@ -80,10 +91,40 @@ export class MapView extends Component {
     `;
     this.toggleButton.addEventListener("click", () => this.toggle());
     document.getElementById(this.props.buttonsContainerId).appendChild(this.toggleButton);
+    this.updateToggleState();
   }
 
   render() {
-    return html`<div id="map-canvas"></div>`;
+    return html`
+      <div id="map-canvas"></div>
+      <button type="button" class="map-help-button" data-on-click="toggleLegend" aria-label="Show map legend" aria-expanded="false" title="Map legend">?</button>
+      <div class="map-legend hidden" role="note">
+        <strong>Map symbols</strong>
+        <span><i class="legend-call"></i>Fill color shows call type</span>
+        <span><i class="legend-open"></i>Red ring means open</span>
+        <span><i class="legend-selected"></i>Blue center means selected</span>
+        <span><i class="legend-user"></i>Hollow blue ring is you</span>
+      </div>
+      <div class="map-notice" role="status" aria-live="polite"></div>
+    `;
+  }
+
+  toggleLegend() {
+    this.legendOpen = !this.legendOpen;
+    const button = this.root.querySelector(".map-help-button");
+    const legend = this.root.querySelector(".map-legend");
+    button?.setAttribute("aria-expanded", String(this.legendOpen));
+    button?.setAttribute("aria-label", this.legendOpen ? "Hide map legend" : "Show map legend");
+    legend?.classList.toggle("hidden", !this.legendOpen);
+  }
+
+  showNotice(message) {
+    const notice = this.root.querySelector(".map-notice");
+    if (!notice) return;
+    notice.textContent = message;
+    notice.classList.add("visible");
+    clearTimeout(this.noticeTimeout);
+    this.noticeTimeout = setTimeout(() => notice.classList.remove("visible"), 3200);
   }
 
   toggle() {
@@ -95,7 +136,7 @@ export class MapView extends Component {
     if (this.isOpen) return;
     this.isOpen = true;
     this.root.classList.add("open");
-    this.toggleButton.setAttribute("aria-expanded", "true");
+    this.updateToggleState();
 
     this.ensureMapInitialized().then(() => {
       setTimeout(() => this.leafletMap.invalidateSize(), OPEN_ANIMATION_MS);
@@ -106,7 +147,15 @@ export class MapView extends Component {
     if (!this.isOpen) return;
     this.isOpen = false;
     this.root.classList.remove("open");
-    this.toggleButton.setAttribute("aria-expanded", "false");
+    this.updateToggleState();
+  }
+
+  updateToggleState() {
+    this.toggleButton.classList.toggle("active", this.isOpen);
+    this.toggleButton.setAttribute("aria-expanded", String(this.isOpen));
+    this.toggleButton.setAttribute("aria-pressed", String(this.isOpen));
+    this.toggleButton.title = this.isOpen ? "Close map" : "Map view";
+    this.toggleButton.setAttribute("aria-label", this.isOpen ? "Close map" : "Map view");
   }
 
   /** Called when a calls-table row is tapped (replaces the old per-row
@@ -139,19 +188,21 @@ export class MapView extends Component {
     }
     const marker = this.markerByEventNumber.get(eventNumber);
     if (!marker) {
-      if (this.markersBounds) this.leafletMap.fitBounds(this.markersBounds, { padding: [24, 24], maxZoom: 14 });
+      if (this.markersBounds) this.leafletMap.fitBounds(this.markersBounds, mapMotionOptions({ padding: [24, 24], maxZoom: 14 }));
+      this.showNotice("Map location unavailable for this call.");
       return;
     }
+    this.showSelectionPing(marker);
     if (includeUserLocation && this.userLocation) {
       const L = window.L;
       const focusBounds = L.latLngBounds([
         marker.getLatLng(),
         [this.userLocation.latitude, this.userLocation.longitude],
       ]);
-      this.leafletMap.fitBounds(focusBounds, { padding: [38, 38], maxZoom: 16, animate: true });
+      this.leafletMap.fitBounds(focusBounds, mapMotionOptions({ padding: [38, 38], maxZoom: 16 }));
       return;
     }
-    this.leafletMap.setView(marker.getLatLng(), 16, { animate: true });
+    this.leafletMap.setView(marker.getLatLng(), 16, mapMotionOptions());
   }
 
   /** Keep exactly one call marker visibly selected. The state is stored
@@ -162,6 +213,16 @@ export class MapView extends Component {
     for (const [number, marker] of this.markerByEventNumber) {
       marker.getElement()?.querySelector(".call-marker")?.classList.toggle("selected", number === eventNumber);
     }
+  }
+
+  showSelectionPing(marker) {
+    if (prefersReducedMotion()) return;
+    const markerElement = marker.getElement()?.querySelector(".call-marker");
+    if (!markerElement) return;
+    markerElement.classList.remove("selection-ping");
+    void markerElement.offsetWidth;
+    markerElement.classList.add("selection-ping");
+    setTimeout(() => markerElement.classList.remove("selection-ping"), 650);
   }
 
   /** Location is acquired by main.js only after the user presses the
@@ -210,27 +271,33 @@ export class MapView extends Component {
 
     const L = await loadLeaflet();
     const canvas = this.root.querySelector("#map-canvas");
-    this.leafletMap = L.map(canvas, { attributionControl: false }).setView([32.9, -117.0], 9);
+    this.leafletMap = L.map(canvas, { attributionControl: false, zoomAnimation: !prefersReducedMotion() }).setView(
+      [32.9, -117.0],
+      9,
+      mapMotionOptions()
+    );
     L.tileLayer(OSM_TILE_URL, { attribution: OSM_ATTRIBUTION, maxZoom: 19 }).addTo(this.leafletMap);
     L.control.attribution({ prefix: "Leaflet" }).addTo(this.leafletMap);
     this.markersLayer = L.layerGroup().addTo(this.leafletMap);
     this.locationLayer = L.layerGroup().addTo(this.leafletMap);
     if (this.userLocation) this.showUserLocation(this.userLocation);
 
-    await this.updateMarkers(this.latestEvents);
+    await this.updateMarkers(this.latestEvents, { fitOverview: true });
   }
 
   /** Called by main.js whenever CallsList loads a fresh batch of events.
    * Cached even while the panel is closed so opening it doesn't need to
-   * wait on a fresh feed fetch. */
+   * wait on a fresh feed fetch. Only the first populated marker set gets
+   * an automatic overview; later feed refreshes rebuild markers in place
+   * without changing the user's current center or zoom. */
   setEvents(events) {
     this.latestEvents = events;
     if (this.hasInitializedMap) {
-      this.updateMarkers(events);
+      this.updateMarkers(events, { fitOverview: !this.hasFitInitialMarkers });
     }
   }
 
-  async updateMarkers(events) {
+  async updateMarkers(events, { fitOverview = false } = {}) {
     if (!this.markersLayer) return;
     const L = window.L;
     this.markersLayer.clearLayers();
@@ -253,8 +320,9 @@ export class MapView extends Component {
       fitBoundsPoints.push([point.lat, point.lon]);
     }
     this.markersBounds = fitBoundsPoints.length ? L.latLngBounds(fitBoundsPoints) : null;
-    if (this.markersBounds) {
-      this.leafletMap.fitBounds(this.markersBounds, { padding: [24, 24], maxZoom: 14 });
+    if (this.markersBounds && fitOverview) {
+      this.leafletMap.fitBounds(this.markersBounds, mapMotionOptions({ padding: [24, 24], maxZoom: 14 }));
+      this.hasFitInitialMarkers = true;
     }
   }
 
@@ -284,6 +352,7 @@ export class MapView extends Component {
     });
     marker.on("click", () => {
       this.setSelectedEvent(event.EventNumber);
+      this.showSelectionPing(marker);
       this.props.onSelectEvent?.(event.EventNumber);
     });
     return marker;

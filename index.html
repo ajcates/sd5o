@@ -34,6 +34,7 @@
       --shadow: rgba(0, 0, 0, 0.6);
       --ease-standard: cubic-bezier(0.2, 0, 0, 1);
       --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+      --map-height: 360px;
     }
 
     * {
@@ -136,14 +137,14 @@
     }
 
     .map-panel.open {
-      height: 360px;
+      height: var(--map-height);
       margin: 14px 0 0;
       box-shadow: 0 18px 48px var(--shadow);
     }
 
     #map-canvas {
       width: 100%;
-      height: 360px;
+      height: var(--map-height);
       background: var(--surface-container);
     }
 
@@ -179,6 +180,102 @@
       background: var(--surface-container-highest) !important;
     }
 
+    .map-help-button {
+      position: absolute;
+      z-index: 1001;
+      top: 12px;
+      right: 12px;
+      display: grid;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      place-items: center;
+      color: var(--on-primary-container);
+      background: rgba(15, 44, 77, 0.94);
+      border: 1px solid rgba(77, 157, 255, 0.35);
+      border-radius: 10px;
+      box-shadow: 0 5px 18px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .map-help-button:focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .map-legend {
+      position: absolute;
+      z-index: 1000;
+      top: 56px;
+      right: 12px;
+      display: grid;
+      width: min(235px, calc(100% - 24px));
+      gap: 7px;
+      padding: 12px;
+      color: var(--on-surface-variant);
+      background: rgba(10, 10, 13, 0.95);
+      border: 1px solid var(--outline-variant);
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.58);
+      font-size: 0.72rem;
+      backdrop-filter: blur(12px);
+    }
+
+    .map-legend strong {
+      color: var(--on-surface);
+      font-size: 0.78rem;
+    }
+
+    .map-legend span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .map-legend i {
+      position: relative;
+      display: inline-block;
+      flex: 0 0 auto;
+      width: 13px;
+      height: 13px;
+      background: var(--primary);
+      border: 2px solid var(--surface);
+      border-radius: 50%;
+    }
+
+    .map-legend .legend-open { border-color: var(--secondary); }
+    .map-legend .legend-selected::after {
+      position: absolute;
+      inset: 3px;
+      background: #80b9ff;
+      border-radius: 50%;
+      content: "";
+    }
+    .map-legend .legend-user { background: transparent; border-color: #4d9dff; }
+
+    .map-notice {
+      position: absolute;
+      z-index: 1000;
+      right: 50%;
+      bottom: 34px;
+      max-width: calc(100% - 32px);
+      padding: 7px 11px;
+      color: var(--on-surface);
+      background: rgba(10, 10, 13, 0.94);
+      border: 1px solid var(--outline-variant);
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      font-size: 0.72rem;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(50%, 5px);
+      transition: opacity 160ms var(--ease-standard), transform 160ms var(--ease-standard);
+      text-align: center;
+    }
+
+    .map-notice.visible { opacity: 1; transform: translate(50%, 0); }
+
     .call-marker {
       position: relative;
       display: block;
@@ -211,6 +308,15 @@
       box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.9);
       content: "";
       transform: translate(-50%, -50%);
+    }
+
+    .call-marker.selection-ping {
+      animation: selected-marker-ping 620ms var(--ease-standard) both;
+    }
+
+    @keyframes selected-marker-ping {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4); transform: scale(1); }
+      38% { box-shadow: 0 0 0 5px rgba(77, 157, 255, 0.25); transform: scale(1.32); }
     }
 
     .call-marker.pulsing::after {
@@ -270,8 +376,17 @@
     }
 
     tbody tr.selected td {
-      background: rgba(77, 157, 255, 0.18);
+      background: rgba(77, 157, 255, 0.09);
       transition: background 200ms var(--ease-standard);
+    }
+
+    tbody tr.selection-flash td {
+      animation: selected-row-flash 2s var(--ease-standard) both;
+    }
+
+    @keyframes selected-row-flash {
+      0%, 100% { background: rgba(77, 157, 255, 0.09); }
+      12% { background: rgba(77, 157, 255, 0.26); }
     }
 
     .brand {
@@ -359,7 +474,7 @@
       width: 100%;
       height: 100%;
       min-width: 0;
-      padding: 0 16px 0 12px;
+      padding: 0 48px 0 12px;
       color: var(--on-surface);
       background: transparent;
       border: 0;
@@ -370,6 +485,28 @@
       color: var(--on-surface-variant);
       opacity: 0.84;
     }
+
+    #filter::-webkit-search-cancel-button { display: none; }
+
+    #clear-filter {
+      position: absolute;
+      right: 5px;
+      display: none;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      place-items: center;
+      color: var(--on-surface-variant);
+      background: transparent;
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+    }
+
+    #clear-filter.visible { display: grid; }
+    #clear-filter:hover { color: var(--on-surface); background: rgba(255, 255, 255, 0.06); }
+    #clear-filter:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+    #clear-filter svg { width: 17px; height: 17px; margin: 0; fill: currentColor; }
 
     #buttons {
       grid-area: actions;
@@ -411,6 +548,13 @@
 
     .icon-button:hover::before {
       opacity: 0.08;
+    }
+
+    .icon-button.active {
+      color: #e0efff;
+      background: #164574;
+      border-color: rgba(128, 185, 255, 0.58);
+      box-shadow: 0 0 0 2px rgba(77, 157, 255, 0.12), 0 8px 22px rgba(0, 34, 70, 0.48);
     }
 
     .icon-button:active {
@@ -475,12 +619,25 @@
     .feed-summary:disabled {
       cursor: wait;
       opacity: 0.9;
+      background: var(--surface-container-high);
     }
 
     .feed-summary:focus-visible {
       outline: 2px solid var(--primary);
       outline-offset: 2px;
     }
+
+    .feed-refresh-icon {
+      flex: 0 0 auto;
+      width: 16px;
+      height: 16px;
+      color: var(--primary);
+      fill: currentColor;
+      transition: transform 140ms var(--ease-standard);
+    }
+
+    .feed-summary:active:not(:disabled) .feed-refresh-icon { transform: rotate(-35deg) scale(0.92); }
+    .feed-summary:disabled .feed-refresh-icon { animation: spin 720ms linear infinite; }
 
     .status-dot {
       position: relative;
@@ -613,7 +770,7 @@
       justify-content: space-between;
       gap: 8px;
       min-height: 44px;
-      padding: 3px 6px;
+      padding: 1px 5px;
       background: var(--surface-container-high);
       border-bottom: 1px solid var(--outline-variant);
     }
@@ -625,7 +782,18 @@
       min-width: 0;
       gap: 6px;
       overflow: hidden;
+      height: 40px;
+      padding: 0 3px;
+      color: inherit;
+      background: transparent;
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+      text-align: left;
     }
+
+    .distance-explanation:hover { background: rgba(255, 255, 255, 0.035); }
+    .distance-explanation:focus-visible { outline: 2px solid var(--primary); outline-offset: -1px; }
 
     .distance-explanation strong {
       flex: 0 0 auto;
@@ -684,8 +852,8 @@
     .distance-tool-button {
       display: grid;
       flex: 0 0 auto;
-      width: 30px;
-      height: 30px;
+      width: 36px;
+      height: 36px;
       padding: 0;
       place-items: center;
       color: var(--on-surface-variant);
@@ -733,6 +901,32 @@
 
     .distance-tool-button.busy svg {
       animation: spin 720ms linear infinite;
+    }
+
+    .location-detail-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 10px;
+      color: var(--on-surface-variant);
+      background: var(--surface-container-high);
+      border-bottom: 1px solid var(--outline-variant);
+      font-size: 0.72rem;
+    }
+
+    .location-detail-panel button,
+    .no-results button {
+      flex: 0 0 auto;
+      min-height: 34px;
+      padding: 5px 11px;
+      color: var(--on-primary-container);
+      background: var(--primary-container);
+      border: 1px solid rgba(77, 157, 255, 0.28);
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 700;
     }
 
     table {
@@ -816,11 +1010,11 @@
     }
 
     tbody tr:not(.open) {
-      opacity: 0.58;
+      opacity: 0.82;
     }
 
     tbody tr:not(.open):hover {
-      opacity: 0.8;
+      opacity: 0.94;
     }
 
     td.Address::before {
@@ -845,19 +1039,40 @@
       content: "Open";
     }
 
-    .Address a {
+    td.Address {
+      position: relative;
+      padding-right: 52px;
+    }
+
+    .address-content {
       display: inline;
       color: var(--on-surface);
       font-weight: 600;
       line-height: 1.35;
-      text-decoration: none;
     }
 
-    .Address a:hover .address-primary {
+    tbody tr:hover .address-primary {
       color: var(--primary);
-      text-decoration: underline;
-      text-underline-offset: 3px;
     }
+
+    .external-map-link {
+      position: absolute;
+      top: 50%;
+      right: 9px;
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      color: var(--on-surface-variant);
+      background: var(--surface-container-highest);
+      border: 1px solid var(--outline-variant);
+      border-radius: 9px;
+      transform: translateY(-50%);
+    }
+
+    .external-map-link:hover { color: var(--primary); border-color: var(--primary); }
+    .external-map-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .external-map-link svg { width: 16px; height: 16px; fill: currentColor; }
 
     .address-primary,
     .community {
@@ -896,8 +1111,19 @@
     }
 
     .distance-unavailable {
-      color: var(--outline);
+      display: inline-grid;
+      width: 23px;
+      height: 23px;
+      place-items: center;
+      color: var(--on-surface-variant);
+      background: var(--surface-container-highest);
+      border-radius: 50%;
+      font-size: 0.68rem;
+      font-weight: 750;
     }
+
+    .distance-unavailable.calculating { color: var(--primary); }
+    .distance-unavailable.error { color: var(--error); }
 
     td.EventType {
       color: var(--on-surface);
@@ -932,6 +1158,20 @@
       display: none !important;
     }
 
+    .no-results {
+      display: grid;
+      min-height: 190px;
+      padding: 28px;
+      place-items: center;
+      align-content: center;
+      gap: 5px;
+      color: var(--on-surface-variant);
+      text-align: center;
+    }
+
+    .no-results strong { color: var(--on-surface); font-size: 0.95rem; }
+    .no-results button { margin-top: 8px; }
+
     @keyframes app-bar-enter {
       from { opacity: 0; transform: translateY(-8px); }
       to { opacity: 1; transform: translateY(0); }
@@ -943,8 +1183,8 @@
     }
 
     @keyframes row-enter {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      from { transform: translateY(3px); }
+      to { transform: translateY(0); }
     }
 
     @keyframes status-pulse {
@@ -962,6 +1202,10 @@
     }
 
     @media (max-width: 760px) {
+      :root {
+        --map-height: clamp(220px, 48dvh, 360px);
+      }
+
       .app-shell {
         padding: 0 10px 22px;
       }
@@ -1028,9 +1272,16 @@
 
       .distance-controls {
         margin-bottom: 8px;
-        padding: 3px 6px;
+        padding: 1px 5px;
         border: 1px solid var(--outline-variant);
         border-radius: 14px;
+      }
+
+      .location-detail-panel {
+        margin: -8px 0 8px;
+        border: 1px solid var(--outline-variant);
+        border-top: 0;
+        border-radius: 0 0 12px 12px;
       }
 
       .distance-actions {
@@ -1079,7 +1330,12 @@
       }
 
       tbody tr:not(.open) {
-        opacity: 0.68;
+        opacity: 0.86;
+      }
+
+      tbody tr.selected {
+        border-color: rgba(77, 157, 255, 0.55);
+        box-shadow: 0 8px 24px rgba(0, 20, 45, 0.55);
       }
 
       td,
@@ -1198,12 +1454,15 @@
       </header>
 
       <div class="search-bar" id="search-bar">
-        <label class="search-field" for="filter">
+        <div class="search-field">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M9.5 3a6.5 6.5 0 1 0 3.98 11.64L19.85 21 21 19.85l-6.36-6.37A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"/>
           </svg>
-          <input type="search" id="filter" placeholder="Search location or call type" autocomplete="off">
-        </label>
+          <input type="search" id="filter" aria-label="Search calls" placeholder="Search location or call type" autocomplete="off">
+          <button type="button" id="clear-filter" aria-label="Clear search" title="Clear search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z"/></svg>
+          </button>
+        </div>
       </div>
     </div>
 

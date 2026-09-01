@@ -29,6 +29,7 @@ function boot() {
     },
     onError: (message, hadExistingData) => statusPanel.setError(message, hadExistingData),
     onEventCount: (text) => statusPanel.setEventCount(text),
+    onFilterChange: (value) => syncSearchControls(value),
     onRowTap: async (event, { sortMode }) => {
       await mapView.focusEventOnMap(event.EventNumber, { includeUserLocation: sortMode === "distance" });
       callsList.focusEvent(event.EventNumber);
@@ -82,25 +83,37 @@ function boot() {
   });
 
   const filterInput = document.getElementById("filter");
-  filterInput.addEventListener("input", () => callsList.setFilter(filterInput.value));
-  filterInput.addEventListener("change", () => callsList.setFilter(filterInput.value));
+  const clearFilterButton = document.getElementById("clear-filter");
+  function syncSearchControls(value) {
+    clearFilterButton.classList.toggle("visible", Boolean(value));
+  }
+  function applyFilter() {
+    callsList.setFilter(filterInput.value);
+    syncSearchControls(filterInput.value);
+  }
+  filterInput.addEventListener("input", applyFilter);
+  filterInput.addEventListener("change", applyFilter);
+  clearFilterButton.addEventListener("click", () => callsList.clearFilter());
 
   callsList.load();
 
-  setInterval(() => statusPanel.refreshRelativeTime(), 1000);
-
-  let lastScrollY = window.scrollY;
-  window.addEventListener(
-    "scroll",
-    () => {
-      const currentScrollY = window.scrollY;
-      if (currentScrollY === 0 && lastScrollY > 0) {
-        callsList.refresh();
-      }
-      lastScrollY = currentScrollY;
-    },
-    { passive: true }
-  );
+  let relativeTimeTimer = null;
+  const startRelativeTimeTimer = () => {
+    if (relativeTimeTimer || document.hidden) return;
+    relativeTimeTimer = setInterval(() => statusPanel.refreshRelativeTime(), 1000);
+  };
+  const stopRelativeTimeTimer = () => {
+    clearInterval(relativeTimeTimer);
+    relativeTimeTimer = null;
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopRelativeTimeTimer();
+    else {
+      statusPanel.refreshRelativeTime();
+      startRelativeTimeTimer();
+    }
+  });
+  startRelativeTimeTimer();
 
   observeHeaderHeight();
   registerServiceWorker();

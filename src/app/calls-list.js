@@ -14,6 +14,7 @@ import { geocode } from "../offgeo/geocoder.js";
 // forever. Comparing/storing only the canonical fields fixes that (see
 // notes/offgeo/index-html-audit.md Part B).
 const CACHE_FIELDS = ["EventNumber", "IsOpen", "DateTime", "Address", "ServiceArea", "Community", "EventType"];
+const BASELINE_KEY = "sd50:calls-baseline:v1";
 
 function pickCacheFields(event) {
   const clean = {};
@@ -22,7 +23,8 @@ function pickCacheFields(event) {
 }
 
 function annotateWithCache(events) {
-  return events.map((event) => {
+  const hasBaseline = localStorage.getItem(BASELINE_KEY) === "ready";
+  const annotated = events.map((event) => {
     const clean = pickCacheFields(event);
     const cachedRaw = localStorage.getItem(event.EventNumber);
     let isNew = false;
@@ -34,16 +36,18 @@ function annotateWithCache(events) {
       } catch {
         isChanged = true;
       }
-    } else {
+    } else if (hasBaseline) {
       isNew = true;
     }
     localStorage.setItem(event.EventNumber, JSON.stringify(clean));
     return { ...event, isNew, isChanged };
   });
+  localStorage.setItem(BASELINE_KEY, "ready");
+  return annotated;
 }
 
 /** Owns #listing: the loading skeleton, error state, and the calls table
- * itself (address links, relative time, open/new/changed row state, and
+ * itself (selection/external-map actions, relative time, open/new/changed row state, and
  * tap-a-row-to-zoom-the-map selection). Ported from
  * CallsForService.buildTable (index.html:1298-1450). Row selection
  * (selectRow) and text filter (applyFilter) intentionally stay outside
@@ -63,13 +67,16 @@ export class CallsList extends Component {
     this.proxyUrl = "https://api.cors.syrins.tech/?url=";
     this.filterValue = "";
     this.filterInputEl = document.getElementById("filter");
-    this.selectedRowTimeout = null;
+    this.selectionFlashTimeout = null;
+    this.selectedEventNumber = null;
     this.userLocation = null;
     this.distanceByEventNumber = new Map();
     this.distanceGeneration = 0;
     this.sortMode = "time";
     this.locationStatus = "idle";
     this.locationMessage = "";
+    this.locationDetailsOpen = false;
+    this.sortAnnouncement = "";
     this.state = { phase: "loading", events: [], errorMessage: "" };
   }
 
@@ -111,12 +118,14 @@ export class CallsList extends Component {
   setLocationPending() {
     this.locationStatus = "locating";
     this.locationMessage = "Finding your location…";
+    this.locationDetailsOpen = false;
     this.update();
   }
 
   setLocationUnavailable(message) {
     this.locationStatus = "unavailable";
     this.locationMessage = message;
+    this.locationDetailsOpen = false;
     this.update();
   }
 
@@ -125,6 +134,7 @@ export class CallsList extends Component {
     this.distanceByEventNumber.clear();
     this.locationStatus = "calculating";
     this.locationMessage = "Calculating straight-line distances…";
+    this.locationDetailsOpen = false;
     this.update();
     this.resolveDistances(this.state.events);
   }
@@ -136,14 +146,18 @@ export class CallsList extends Component {
     this.locationStatus = "idle";
     this.locationMessage = "";
     this.sortMode = "time";
+    this.sortAnnouncement = "";
+    this.locationDetailsOpen = false;
     this.update();
   }
 
   requestLocation() {
+    this.locationDetailsOpen = false;
     this.props.onRequestLocation?.();
   }
 
   refreshLocation() {
+    this.locationDetailsOpen = false;
     this.props.onRequestLocation?.();
   }
 
@@ -154,12 +168,25 @@ export class CallsList extends Component {
   sortByTime() {
     if (this.sortMode === "time") return;
     this.sortMode = "time";
+    this.sortAnnouncement = "Sorted by newest";
     this.update();
+    setTimeout(() => {
+      this.sortAnnouncement = "";
+    }, 100);
   }
 
   sortByDistance() {
     if (this.locationStatus !== "ready") return;
     this.sortMode = "distance";
+    this.sortAnnouncement = "Sorted by nearest";
+    this.update();
+    setTimeout(() => {
+      this.sortAnnouncement = "";
+    }, 100);
+  }
+
+  toggleLocationDetails() {
+    this.locationDetailsOpen = !this.locationDetailsOpen;
     this.update();
   }
 
@@ -212,6 +239,16 @@ export class CallsList extends Component {
     this.applyFilter();
   }
 
+  clearFilter() {
+    this.filterValue = "";
+    if (this.filterInputEl) {
+      this.filterInputEl.value = "";
+      this.filterInputEl.focus();
+    }
+    this.props.onFilterChange?.("");
+    this.applyFilter();
+  }
+
   applyFilter() {
     const filter = this.filterValue.trim().toLowerCase();
     const rows = this.root.querySelectorAll("tbody tr");
@@ -221,14 +258,39 @@ export class CallsList extends Component {
       row.classList.toggle("hidden", !matches);
       if (matches) visibleCount += 1;
     }
+    const noResults = this.root.querySelector(".no-results");
+    noResults?.classList.toggle("hidden", !filter || visibleCount > 0);
     const text = filter ? `${visibleCount} of ${rows.length} calls` : `${rows.length} call${rows.length === 1 ? "" : "s"}`;
     this.props.onEventCount?.(text);
   }
 
   onRender() {
     if (this.state.phase === "live") {
+      this.applySelectionState();
       this.applyFilter();
     }
+  }
+
+  applySelectionState({ flash = false } = {}) {
+    for (const row of this.root.querySelectorAll("tbody tr")) {
+      const selected = row.dataset.eventNumber === this.selectedEventNumber;
+      row.classList.toggle("selected", selected);
+      row.setAttribute("aria-pressed", String(selected));
+      if (!selected) row.classList.remove("selection-flash");
+    }
+    if (!flash || !this.selectedEventNumber) return;
+    const row = this.root.querySelector(`tbody tr[data-event-number="${CSS.escape(this.selectedEventNumber)}"]`);
+    if (!row) return;
+    row.classList.remove("selection-flash");
+    void row.offsetWidth;
+    row.classList.add("selection-flash");
+    clearTimeout(this.selectionFlashTimeout);
+    this.selectionFlashTimeout = setTimeout(() => row.classList.remove("selection-flash"), 2000);
+  }
+
+  selectEvent(eventNumber, { flash = true } = {}) {
+    this.selectedEventNumber = eventNumber;
+    this.applySelectionState({ flash });
   }
 
   /** Scroll the matching row into view and briefly highlight it -- the
@@ -241,13 +303,10 @@ export class CallsList extends Component {
     if (!row) return;
 
     if (row.classList.contains("hidden")) {
-      this.filterInputEl.value = "";
-      this.setFilter("");
+      this.clearFilter();
     }
     this.scrollRowBelowStickyPanels(row);
-    row.classList.add("selected");
-    clearTimeout(this.selectedRowTimeout);
-    this.selectedRowTimeout = setTimeout(() => row.classList.remove("selected"), 2000);
+    this.selectEvent(eventNumber);
   }
 
   /** A normal scrollIntoView({block:'start'}) places the selected row
@@ -281,17 +340,34 @@ export class CallsList extends Component {
    * Maps iframe embed, which made a request to Google on every expand.
    * See MapView.focusEventOnMap in map-view.js. */
   selectRow(event, rowEl) {
-    if (event.target.closest("a")) return;
+    if (event.target.closest(".external-map-link")) return;
 
     const eventData = this.state.events.find((e) => e.EventNumber === rowEl.dataset.eventNumber);
     if (!eventData) return;
 
-    this.root.querySelectorAll("tbody tr.selected").forEach((r) => r.classList.remove("selected"));
-    rowEl.classList.add("selected");
-    clearTimeout(this.selectedRowTimeout);
-    this.selectedRowTimeout = setTimeout(() => rowEl.classList.remove("selected"), 2000);
+    this.selectEvent(eventData.EventNumber);
 
     this.props.onRowTap?.(eventData, { sortMode: this.sortMode });
+  }
+
+  selectRowKeydown(event, rowEl) {
+    if (event.target.closest(".external-map-link")) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    this.selectRow(event, rowEl);
+  }
+
+  unavailableDistanceMarkup() {
+    if (this.locationStatus === "idle") {
+      return `<span class="distance-unavailable idle" aria-label="Enable location to calculate distance">○</span>`;
+    }
+    if (this.locationStatus === "locating" || this.locationStatus === "calculating") {
+      return `<span class="distance-unavailable calculating" aria-label="Distance calculating">…</span>`;
+    }
+    if (this.locationStatus === "ready") {
+      return `<span class="distance-unavailable unmatched" aria-label="Address could not be matched for distance">?</span>`;
+    }
+    return `<span class="distance-unavailable error" aria-label="Distance unavailable because location is unavailable">!</span>`;
   }
 
   renderRow(event, rowIndex) {
@@ -306,7 +382,7 @@ export class CallsList extends Component {
     const distance = formatDistanceMiles(this.distanceByEventNumber.get(event.EventNumber));
     const distanceMarkup = distance
       ? `<span class="distance-chip" aria-label="${distance.accessible}">${distance.visible}</span>`
-      : `<span class="distance-unavailable" aria-label="Straight-line distance unavailable">—</span>`;
+      : this.unavailableDistanceMarkup();
     // The left-edge color now carries the dispatch category (matching
     // the map marker's fill color, see event-category.js), so "new"/
     // "changed" -- previously shown the same way, by swapping that
@@ -319,20 +395,35 @@ export class CallsList extends Component {
         style="--row-index: ${rowIndex + 1}; --category-color: ${raw(categoryColor)}"
         data-event-number="${event.EventNumber}"
         data-on-click="selectRow"
+        data-on-keydown="selectRowKeydown"
+        role="button"
+        tabindex="0"
+        aria-pressed="${event.EventNumber === this.selectedEventNumber}"
+        aria-label="Select ${event.EventType} at ${address}"
         title="${categoryName}"
       >
         <td data-label="Address" class="Address">
-          <a href="${raw(mapsHref)}" target="_blank" rel="noopener noreferrer">
+          <div class="address-content">
             ${raw(badge)}
             <span class="address-primary">${event.Address}</span>
             <span class="community">${event.Community}</span>
+          </div>
+          <a
+            class="external-map-link"
+            href="${raw(mapsHref)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open ${address} in Google Maps"
+            title="Open in Google Maps"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.4l-8.3 8.3-1.4-1.4L17.6 5H14V3ZM5 5h6v2H7v10h10v-4h2v6H5V5Z"/></svg>
           </a>
         </td>
-        <td data-label="DateTime" class="DateTime" title="${event.DateTime}">${prettyTime(event.DateTime)}</td>
+        <td data-label="Time" class="DateTime" title="${event.DateTime}">${prettyTime(event.DateTime)}</td>
         <td data-label="Distance" class="Distance" title="Straight-line distance from your location">
           ${raw(distanceMarkup)}
         </td>
-        <td data-label="EventType" class="EventType">${event.EventType}</td>
+        <td data-label="Call type" class="EventType">${event.EventType}</td>
       </tr>
     `;
   }
@@ -367,15 +458,20 @@ export class CallsList extends Component {
         <thead>
           <tr>
             <th class="Address">Address</th>
-            <th class="DateTime">DateTime</th>
+            <th class="DateTime">Time</th>
             <th class="Distance" title="Straight-line distance from your location">Distance</th>
-            <th class="EventType">EventType</th>
+            <th class="EventType">Call type</th>
           </tr>
         </thead>
         <tbody>
           ${raw(rows.join(""))}
         </tbody>
       </table>
+      <div class="no-results hidden" role="status">
+        <strong>No calls match this search</strong>
+        <span>Try a different location or call type.</span>
+        <button type="button" data-on-click="clearFilter">Clear search</button>
+      </div>
     `;
   }
 
@@ -430,13 +526,13 @@ export class CallsList extends Component {
           busy ? " disabled" : ""
         }>${locationIcon}</button>`;
     return `
-      <section class="distance-controls ${this.locationStatus}" aria-label="Distance and sorting controls">
-        <div class="distance-explanation" title="${statusText}">
+      <section class="distance-controls ${this.locationStatus}" aria-label="Distance and sorting controls" aria-busy="${busy}">
+        <button type="button" class="distance-explanation" title="${statusText}" data-on-click="toggleLocationDetails" aria-expanded="${this.locationDetailsOpen}" aria-controls="location-detail-panel">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3V6Zm2 2v8h14V8h-2v3h-2V8h-2v2h-2V8H9v3H7V8H5Z"/></svg>
           <strong>Distance</strong>
           <span class="distance-compact-state" aria-hidden="true">${compactStatus}</span>
           <span class="visually-hidden" role="status" aria-live="polite">${statusText}</span>
-        </div>
+        </button>
         <div class="distance-actions">
           <div class="sort-control" aria-label="Sort calls">
             <button type="button" data-on-click="sortByTime" title="Sort by newest" aria-label="Sort by newest" aria-pressed="${
@@ -452,6 +548,11 @@ export class CallsList extends Component {
           </div>
           ${locationAction}
         </div>
-      </section>`;
+        <span class="visually-hidden" role="status" aria-live="polite">${this.sortAnnouncement}</span>
+      </section>
+      <div class="location-detail-panel${this.locationDetailsOpen ? "" : " hidden"}" id="location-detail-panel" role="status">
+        <span>${statusText}</span>
+        ${this.locationStatus === "ready" ? "" : `<button type="button" data-on-click="refreshLocation">Try again</button>`}
+      </div>`;
   }
 }
