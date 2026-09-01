@@ -197,6 +197,22 @@
       border-color: var(--secondary);
     }
 
+    /* The selected call keeps its category fill and open/closed ring;
+       this tiny center point adds selection without replacing either. */
+    .call-marker.selected::before {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      left: 50%;
+      width: 3px;
+      height: 3px;
+      background: #80b9ff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.9);
+      content: "";
+      transform: translate(-50%, -50%);
+    }
+
     .call-marker.pulsing::after {
       position: absolute;
       inset: 0;

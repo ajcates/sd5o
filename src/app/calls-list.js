@@ -291,7 +291,7 @@ export class CallsList extends Component {
     clearTimeout(this.selectedRowTimeout);
     this.selectedRowTimeout = setTimeout(() => rowEl.classList.remove("selected"), 2000);
 
-    this.props.onRowTap?.(eventData);
+    this.props.onRowTap?.(eventData, { sortMode: this.sortMode });
   }
 
   renderRow(event, rowIndex) {

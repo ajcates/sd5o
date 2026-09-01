@@ -63,6 +63,7 @@ export class MapView extends Component {
     this.locationLayer = null;
     this.latestEvents = [];
     this.userLocation = null;
+    this.selectedEventNumber = null;
     this.markerByEventNumber = new Map();
     this.markersBounds = null;
 
@@ -112,7 +113,8 @@ export class MapView extends Component {
    * Google Maps iframe embed, which made a request to Google on every
    * expand -- see calls-list.js's selectRow). Opens the map if it's
    * closed, waits for Leaflet + the event's marker to exist, then pans/
-   * zooms to it.
+   * zooms to it. When the list is sorted by distance, the fitted view
+   * includes both that call and the user's location instead.
    *
    * Not every call has a marker -- v0's geocoder has no fallback beyond
    * an exact street-name/range match (see pack-engine.js), so some real
@@ -123,7 +125,8 @@ export class MapView extends Component {
    * whichever call was focused *before*. Resetting to the all-markers
    * overview instead makes the "no location available for this call"
    * case honest rather than silently wrong-looking. */
-  async focusEventOnMap(eventNumber) {
+  async focusEventOnMap(eventNumber, { includeUserLocation = false } = {}) {
+    this.setSelectedEvent(eventNumber);
     const wasOpen = this.isOpen;
     this.open();
     await this.ensureMapInitialized();
@@ -139,7 +142,26 @@ export class MapView extends Component {
       if (this.markersBounds) this.leafletMap.fitBounds(this.markersBounds, { padding: [24, 24], maxZoom: 14 });
       return;
     }
+    if (includeUserLocation && this.userLocation) {
+      const L = window.L;
+      const focusBounds = L.latLngBounds([
+        marker.getLatLng(),
+        [this.userLocation.latitude, this.userLocation.longitude],
+      ]);
+      this.leafletMap.fitBounds(focusBounds, { padding: [38, 38], maxZoom: 16, animate: true });
+      return;
+    }
     this.leafletMap.setView(marker.getLatLng(), 16, { animate: true });
+  }
+
+  /** Keep exactly one call marker visibly selected. The state is stored
+   * independently from Leaflet's current DOM so it survives a marker
+   * refresh and is applied again when new marker elements are built. */
+  setSelectedEvent(eventNumber) {
+    this.selectedEventNumber = eventNumber;
+    for (const [number, marker] of this.markerByEventNumber) {
+      marker.getElement()?.querySelector(".call-marker")?.classList.toggle("selected", number === eventNumber);
+    }
   }
 
   /** Location is acquired by main.js only after the user presses the
@@ -249,7 +271,9 @@ export class MapView extends Component {
       : "";
     const icon = L.divIcon({
       className: "",
-      html: `<span class="call-marker${pulse ? " pulsing" : ""}${event.IsOpen ? " open" : ""}" style="--marker-color:${colorVar};${pulseStyle}"></span>`,
+      html: `<span class="call-marker${pulse ? " pulsing" : ""}${event.IsOpen ? " open" : ""}${
+        event.EventNumber === this.selectedEventNumber ? " selected" : ""
+      }" style="--marker-color:${colorVar};${pulseStyle}"></span>`,
       iconSize: [14, 14],
       iconAnchor: [7, 7],
     });
@@ -258,7 +282,10 @@ export class MapView extends Component {
       title: `${eventTypeCategoryName(event.EventType)} · ${event.Address}, ${event.Community}`,
       alt: event.EventType,
     });
-    marker.on("click", () => this.props.onSelectEvent?.(event.EventNumber));
+    marker.on("click", () => {
+      this.setSelectedEvent(event.EventNumber);
+      this.props.onSelectEvent?.(event.EventNumber);
+    });
     return marker;
   }
 }

@@ -29,8 +29,8 @@ function boot() {
     },
     onError: (message, hadExistingData) => statusPanel.setError(message, hadExistingData),
     onEventCount: (text) => statusPanel.setEventCount(text),
-    onRowTap: async (event) => {
-      await mapView.focusEventOnMap(event.EventNumber);
+    onRowTap: async (event, { sortMode }) => {
+      await mapView.focusEventOnMap(event.EventNumber, { includeUserLocation: sortMode === "distance" });
       callsList.focusEvent(event.EventNumber);
     },
     onRequestLocation: requestUserLocation,
