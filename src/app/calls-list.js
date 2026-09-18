@@ -63,8 +63,10 @@ export class CallsList extends Component {
     // Third-party CORS proxy with an embedded function key -- carried over
     // unchanged. OFF-011 (notes/offgeo/todo.md Group 5) already flags this
     // as not meeting the "no secret in shipped source" bar; replacing it is
-    // that item's job, not this rewrite's.
-    this.proxyUrl = "https://api.cors.syrins.tech/?url=";
+    // that item's job, not this rewrite's. api.cors.syrins.tech went dark
+    // (DNS now resolves to 127.0.0.1) 2026-09-18; swapped for api.cors.lol,
+    // verified live and CORS-enabled (see notes/offgeo/todo.md OFF-011).
+    this.proxyUrl = "https://api.cors.lol/?url=";
     this.filterValue = "";
     this.filterInputEl = document.getElementById("filter");
     this.selectionFlashTimeout = null;
