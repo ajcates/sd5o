@@ -60,13 +60,21 @@ export class CallsList extends Component {
   onCreate() {
     this.apiUrl = "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents";
     this.apiKey = "LrxsShPJ3sVycwPqa_Dk-EajBxZJfQGbDBQK1c5wbBoBAzFu2CxMqA==";
-    // Third-party CORS proxy with an embedded function key -- carried over
-    // unchanged. OFF-011 (notes/offgeo/todo.md Group 5) already flags this
-    // as not meeting the "no secret in shipped source" bar; replacing it is
-    // that item's job, not this rewrite's. api.cors.syrins.tech went dark
-    // (DNS now resolves to 127.0.0.1) 2026-09-18; swapped for api.cors.lol,
-    // verified live and CORS-enabled (see notes/offgeo/todo.md OFF-011).
-    this.proxyUrl = "https://api.cors.lol/?url=";
+    // Third-party CORS proxies with an embedded function key -- carried
+    // over unchanged. OFF-011 (notes/offgeo/todo.md Group 5) already flags
+    // this as not meeting the "no secret in shipped source" bar; replacing
+    // it is that item's job, not this rewrite's. api.cors.syrins.tech went
+    // dark (DNS sinkholed) 2026-09-18, and its replacement api.cors.lol
+    // started 429-ing (rate limited, and its error responses carry no CORS
+    // header so the browser reports an opaque "Failed to fetch" instead of
+    // the real status) the same day. Rather than chase single dead proxies
+    // again, load() now tries each of these in order and only surfaces an
+    // error once all of them fail (see notes/offgeo/todo.md OFF-011).
+    this.proxyUrls = [
+      (url) => `https://cors.eu.org/${url}`,
+      (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      (url) => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
+    ];
     this.filterValue = "";
     this.filterInputEl = document.getElementById("filter");
     this.selectionFlashTimeout = null;
@@ -82,11 +90,28 @@ export class CallsList extends Component {
     this.state = { phase: "loading", events: [], errorMessage: "" };
   }
 
-  getRequestUrl() {
+  getSourceUrl() {
     const sourceUrl = new URL(this.apiUrl);
     sourceUrl.searchParams.set("code", this.apiKey);
     sourceUrl.searchParams.set("_", Date.now().toString());
-    return this.proxyUrl + encodeURIComponent(sourceUrl.toString());
+    return sourceUrl.toString();
+  }
+
+  /** Tries each proxy in this.proxyUrls in order, returning the first
+   * successful response. Only throws (the last proxy's error) once every
+   * proxy has failed -- a single dead or rate-limited proxy shouldn't take
+   * the feed down when others are working. */
+  async fetchViaProxies() {
+    const sourceUrl = this.getSourceUrl();
+    let lastError;
+    for (const buildProxyUrl of this.proxyUrls) {
+      try {
+        return await fetchJson(buildProxyUrl(sourceUrl));
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError;
   }
 
   async load() {
@@ -96,7 +121,7 @@ export class CallsList extends Component {
       this.setState({ phase: "loading" });
     }
     try {
-      const json = await fetchJson(this.getRequestUrl());
+      const json = await this.fetchViaProxies();
       if (!json || !Array.isArray(json.Events)) {
         throw new Error("The calls service returned an unexpected response.");
       }
