@@ -57,6 +57,12 @@ function annotateWithCache(events) {
  * distance completion, and sort changes intentionally rebuild the table;
  * each of those changes the row data or row order itself. */
 export class CallsList extends Component {
+  // Per-proxy abort timeout for fetchViaProxies -- long enough for a slow
+  // but working proxy to finish, short enough that a hung one doesn't sit
+  // in the race indefinitely (2026-09-19: observed several proxies just
+  // never respond, rather than erroring, when they're struggling).
+  static PROXY_TIMEOUT_MS = 10000;
+
   onCreate() {
     this.apiUrl = "https://leag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us/api/GetCADEvents";
     this.apiKey = "LrxsShPJ3sVycwPqa_Dk-EajBxZJfQGbDBQK1c5wbBoBAzFu2CxMqA==";
@@ -68,10 +74,16 @@ export class CallsList extends Component {
     // started 429-ing (rate limited, and its error responses carry no CORS
     // header so the browser reports an opaque "Failed to fetch" instead of
     // the real status) the same day. Rather than chase single dead proxies
-    // again, load() now tries each of these in order and only surfaces an
-    // error once all of them fail (see notes/offgeo/todo.md OFF-011).
+    // again, load() now races all of these at once (fetchViaProxies) and
+    // only surfaces an error once every one of them has failed or timed
+    // out (see notes/offgeo/todo.md OFF-011). cors.eu.org itself started
+    // 429-ing with no CORS header on 2026-09-18 and was still doing so as
+    // of 2026-09-19 (checked against a real browser, not just curl, since
+    // several of these front bot traffic differently); swapped it for
+    // cors-get-proxy.sirjosh.workers.dev, which was the only other
+    // candidate that came back reliably (6/6 in that same check).
     this.proxyUrls = [
-      (url) => `https://cors.eu.org/${url}`,
+      (url) => `https://cors-get-proxy.sirjosh.workers.dev/?url=${encodeURIComponent(url)}`,
       (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
       (url) => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
     ];
@@ -97,21 +109,30 @@ export class CallsList extends Component {
     return sourceUrl.toString();
   }
 
-  /** Tries each proxy in this.proxyUrls in order, returning the first
-   * successful response. Only throws (the last proxy's error) once every
-   * proxy has failed -- a single dead or rate-limited proxy shouldn't take
-   * the feed down when others are working. */
+  /** Races every proxy in this.proxyUrls at once (each capped at
+   * PROXY_TIMEOUT_MS) and returns whichever responds successfully first.
+   * These are free third-party proxies with no uptime guarantee -- on any
+   * given day some are dead (DNS sinkholed, rate-limited) and others are
+   * merely slow or occasionally hang with no response at all. Racing
+   * instead of trying them one at a time means a single hung proxy no
+   * longer blocks the whole feed from loading while a healthy one sits
+   * idle further down the list; only throws once every proxy has failed
+   * or timed out (see notes/offgeo/todo.md OFF-011). */
   async fetchViaProxies() {
     const sourceUrl = this.getSourceUrl();
-    let lastError;
-    for (const buildProxyUrl of this.proxyUrls) {
-      try {
-        return await fetchJson(buildProxyUrl(sourceUrl));
-      } catch (error) {
-        lastError = error;
-      }
+    const controllers = this.proxyUrls.map(() => new AbortController());
+    const attempts = this.proxyUrls.map((buildProxyUrl, i) => {
+      const controller = controllers[i];
+      const timeout = setTimeout(() => controller.abort(), CallsList.PROXY_TIMEOUT_MS);
+      return fetchJson(buildProxyUrl(sourceUrl), { signal: controller.signal }).finally(() => clearTimeout(timeout));
+    });
+    try {
+      const result = await Promise.any(attempts);
+      for (const controller of controllers) controller.abort();
+      return result;
+    } catch (aggregateError) {
+      throw aggregateError.errors?.[aggregateError.errors.length - 1] ?? aggregateError;
     }
-    throw lastError;
   }
 
   async load() {

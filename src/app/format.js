@@ -48,8 +48,8 @@ export function compactElapsedTime(datestring) {
   return `${days}d${hours}h ago`;
 }
 
-export async function fetchJson(url) {
-  const response = await fetch(url, { cache: "no-store" });
+export async function fetchJson(url, { signal } = {}) {
+  const response = await fetch(url, { cache: "no-store", signal });
   const responseText = await response.text();
   let data;
 
