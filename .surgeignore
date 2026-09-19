@@ -1,0 +1,11 @@
+node_modules
+build
+tests
+tools
+notes
+main.js.old
+serviceworker.js.old
+readme.md
+package.json
+package-lock.json
+LICENSE
