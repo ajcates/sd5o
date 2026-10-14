@@ -1,9 +1,9 @@
 # Browser capability matrix (`OFF-013`, Group 6)
 
-Status: Probed live 2026-08-25 against one real device/browser
+Status: Probed live 2026-10-14 against one real device/browser
 Scope: [`todo.md`](./todo.md) Group 6. This is a **measured baseline from the one browser available in this dev environment**, not the production target-device matrix -- `roadmap.md` §13 separately tracks "Reference Android/browser matrix" as its own decision due at R1 start, once real target devices/browsers are chosen. Re-run `node tests/e2e/run.mjs` (regenerates this file) against each browser added to that matrix as it's decided.
 
-Probed with: playwright-core driving system Chromium (`/usr/bin/chromium`), version `151.0.7922.169`, via `tests/e2e/run.mjs`.
+Probed with: playwright-core driving system Chromium (`/data/data/com.termux/files/usr/bin/chromium-browser`), version `149.0.7827.155`, via `tests/e2e/run.mjs`.
 
 | Capability | Supported here | Degraded/unsupported behavior required |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Probed with: playwright-core driving system Chromium (`/usr/bin/chromium`), vers
 | Geolocation (`navigator.geolocation`) | Yes | Keep calls/geocoding usable; explicit recovery action |
 | Secure context (`isSecureContext`) | Yes | Several APIs above are unavailable outside a secure context by spec |
 
-Storage estimate sample from this probe run: `{"quota":5368734230,"usage":25110,"usageDetails":{"caches":24708,"serviceWorkerRegistrations":402}}`.
+Storage estimate sample from this probe run: `{"quota":1073785123,"usage":43299,"usageDetails":{"caches":42897,"serviceWorkerRegistrations":402}}`.
 
 ## Required degraded/unsupported behavior (per `spec.md`)
 
@@ -40,7 +40,7 @@ None of these may fail silently -- each missing API needs its own explicit state
 ## Smoke-test outcome from this same probe run
 
 - Status panel reached: `live`
-- Console errors: none
+- Console errors: `Access to fetch at 'https://api.cors.lol/?url=https%3A%2F%2Fleag-caddata-dev-fa-leag-caddata-dev-fa-blue.azurewebsites.us%2Fapi%2FGetCADEvents%3Fcode%3DLrxsShPJ3sVycwPqa_Dk-EajBxZJfQGbDBQK1c5wbBoBAzFu2CxMqA%253D%253D%26_%3D1791991707623' from origin 'http://localhost:8934' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.`, `Failed to load resource: net::ERR_FAILED`
 - Uncaught page errors: none
 
 This section is regenerated every run of `node tests/e2e/run.mjs` and reflects that specific run's live-feed reachability, not a fixed guarantee.

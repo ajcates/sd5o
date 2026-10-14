@@ -413,7 +413,12 @@ export class CallsList extends Component {
 
   unavailableDistanceMarkup() {
     if (this.locationStatus === "idle") {
-      return `<span class="distance-unavailable idle" aria-label="Enable location to calculate distance">○</span>`;
+      // No visible glyph here: before location is ever enabled, every
+      // row/card showed the same unlabeled "○", which read as a wall of
+      // repeated noise (a whole column of it on desktop) rather than
+      // meaningful per-row state. The Distance toolbar above already
+      // explains that distance needs location; nothing per-row to add.
+      return `<span class="visually-hidden">Enable location to calculate distance</span>`;
     }
     if (this.locationStatus === "locating" || this.locationStatus === "calculating") {
       return `<span class="distance-unavailable calculating" aria-label="Distance calculating">…</span>`;
@@ -608,7 +613,7 @@ export class CallsList extends Component {
         </div>
         <span class="visually-hidden" role="status" aria-live="polite">${this.sortAnnouncement}</span>
       </section>
-      <div class="location-detail-panel${this.locationDetailsOpen ? "" : " hidden"}" id="location-detail-panel" role="status">
+      <div class="location-detail-panel${this.locationDetailsOpen ? " panel-pop" : " hidden"}" id="location-detail-panel" role="status">
         <span>${statusText}</span>
         ${this.locationStatus === "ready" ? "" : `<button type="button" data-on-click="refreshLocation">Try again</button>`}
       </div>`;

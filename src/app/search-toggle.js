@@ -28,7 +28,7 @@ export class SearchToggle extends Component {
     return html`
       <button
         type="button"
-        class="icon-button"
+        class="${this.state.open ? "icon-button active" : "icon-button"}"
         title="Search calls"
         aria-label="Search calls"
         aria-expanded="${expanded}"

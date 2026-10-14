@@ -118,6 +118,11 @@ export class MapView extends Component {
     button?.setAttribute("aria-expanded", String(this.legendOpen));
     button?.setAttribute("aria-label", this.legendOpen ? "Hide map legend" : "Show map legend");
     legend?.classList.toggle("hidden", !this.legendOpen);
+    if (this.legendOpen && legend) {
+      legend.classList.remove("legend-pop");
+      void legend.offsetWidth;
+      legend.classList.add("legend-pop");
+    }
   }
 
   showNotice(message) {

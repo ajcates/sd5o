@@ -32,8 +32,14 @@
       --error: #ff6b6b;
       --error-container: #4a1414;
       --shadow: rgba(0, 0, 0, 0.6);
+      /* --ease-standard is for color/background/opacity swaps, where
+         overshoot would read as a glitch rather than a bounce.
+         --ease-bounce is for small interactive feedback (button press,
+         selection). --ease-spring is for larger surface entrances/exits
+         (panels, cards) -- a bigger, slower overshoot than --ease-bounce. */
       --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-      --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+      --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.4);
       --map-height: 360px;
     }
 
@@ -90,7 +96,7 @@
       background: rgba(0, 0, 0, 0.9);
       border-bottom: 1px solid var(--outline-variant);
       backdrop-filter: blur(18px) saturate(135%);
-      animation: app-bar-enter 360ms var(--ease-standard) both;
+      animation: app-bar-enter 360ms var(--ease-spring) both;
     }
 
     .top-app-bar {
@@ -109,7 +115,7 @@
       height: 0;
       overflow: hidden;
       padding: 0 20px;
-      transition: height 220ms var(--ease-emphasized);
+      transition: height 220ms var(--ease-spring);
     }
 
     .search-bar.open {
@@ -132,8 +138,11 @@
       overflow: hidden;
       margin: 0;
       background: var(--surface);
-      border-radius: 14px;
-      transition: height 320ms var(--ease-emphasized);
+      /* Bigger radius than the standard 14px used elsewhere -- this is a
+         single large framing surface, not a repeated data row, so it gets
+         Expressive's bolder large-surface shape scale. */
+      border-radius: 20px;
+      transition: height 320ms var(--ease-spring);
     }
 
     .map-panel.open {
@@ -151,7 +160,7 @@
     .leaflet-container {
       background: var(--surface-container) !important;
       border: 1px solid var(--outline-variant);
-      border-radius: 14px;
+      border-radius: 20px;
       font-family: inherit;
     }
 
@@ -193,10 +202,18 @@
       color: var(--on-primary-container);
       background: rgba(15, 44, 77, 0.94);
       border: 1px solid rgba(77, 157, 255, 0.35);
-      border-radius: 10px;
+      /* Fully circular, matching the brand-mark and location FAB -- a
+         consistent "small round accent = helper/identity element" shape
+         language distinct from the square icon-buttons. */
+      border-radius: 50%;
       box-shadow: 0 5px 18px rgba(0, 0, 0, 0.45);
       cursor: pointer;
       font-weight: 800;
+      transition: transform 180ms var(--ease-bounce);
+    }
+
+    .map-help-button:active {
+      transform: scale(0.88);
     }
 
     .map-help-button:focus-visible {
@@ -216,10 +233,24 @@
       color: var(--on-surface-variant);
       background: rgba(10, 10, 13, 0.95);
       border: 1px solid var(--outline-variant);
-      border-radius: 12px;
+      border-radius: 16px;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.58);
       font-size: 0.72rem;
       backdrop-filter: blur(12px);
+    }
+
+    /* Re-triggered on each open the same way MapView.showSelectionPing
+       re-triggers .selection-ping -- .map-legend is a long-lived node
+       that never re-renders, so toggling display:none alone (via
+       .hidden) can't play a fresh animation on its own. */
+    .map-legend.legend-pop,
+    .location-detail-panel.panel-pop {
+      animation: panel-pop-in 260ms var(--ease-spring) both;
+    }
+
+    @keyframes panel-pop-in {
+      from { opacity: 0; transform: translateY(-6px) scale(0.94); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     .map-legend strong {
@@ -328,12 +359,12 @@
     }
 
     .call-marker.selection-ping {
-      animation: selected-marker-ping 620ms var(--ease-standard) both;
+      animation: selected-marker-ping 620ms var(--ease-bounce) both;
     }
 
     @keyframes selected-marker-ping {
       0%, 100% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4); transform: scale(1); }
-      38% { box-shadow: 0 0 0 5px rgba(77, 157, 255, 0.25); transform: scale(1.32); }
+      38% { box-shadow: 0 0 0 5px rgba(77, 157, 255, 0.25); transform: scale(1.42); }
     }
 
     .call-marker.pulsing::after {
@@ -397,12 +428,12 @@
     }
 
     tbody tr.selection-flash td {
-      animation: selected-row-flash 2s var(--ease-standard) both;
+      animation: selected-row-flash 2s var(--ease-bounce) both;
     }
 
     @keyframes selected-row-flash {
       0%, 100% { background: rgba(77, 157, 255, 0.09); }
-      12% { background: rgba(77, 157, 255, 0.26); }
+      12% { background: rgba(77, 157, 255, 0.32); }
     }
 
     .brand {
@@ -413,6 +444,11 @@
       min-width: 0;
     }
 
+    /* Deliberately flat -- no border, shadow, or gradient -- so this
+       decorative logo mark doesn't share .icon-button's pressable look
+       (rounded square + elevation) despite sitting right next to real
+       icon buttons in the same row. A circle also reads as a badge/
+       mark rather than a square button. */
     .brand-mark {
       display: grid;
       flex: 0 0 auto;
@@ -420,10 +456,8 @@
       height: 38px;
       place-items: center;
       color: var(--on-primary-container);
-      background: linear-gradient(145deg, #1a4a80, var(--primary-container));
-      border: 1px solid rgba(77, 157, 255, 0.28);
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 20, 45, 0.4);
+      background: var(--primary-container);
+      border-radius: 50%;
     }
 
     .brand-mark svg {
@@ -545,7 +579,7 @@
       box-shadow: 0 6px 18px rgba(0, 20, 45, 0.35);
       cursor: pointer;
       overflow: hidden;
-      transition: transform 140ms var(--ease-standard), background 140ms var(--ease-standard), box-shadow 140ms var(--ease-standard);
+      transition: transform 180ms var(--ease-bounce), background 140ms var(--ease-standard), box-shadow 160ms var(--ease-standard);
     }
 
     .icon-button::before {
@@ -574,7 +608,7 @@
     }
 
     .icon-button:active {
-      transform: scale(0.94);
+      transform: scale(0.88);
     }
 
     .icon-button:focus-visible {
@@ -608,9 +642,9 @@
       padding: 10px 16px;
       background: var(--surface-container);
       border: 1px solid var(--outline-variant);
-      border-radius: 14px;
+      border-radius: 18px;
       box-shadow: 0 14px 40px var(--shadow);
-      animation: surface-enter 380ms 60ms var(--ease-standard) both;
+      animation: surface-enter 380ms 60ms var(--ease-spring) both;
     }
 
     .feed-summary {
@@ -625,7 +659,11 @@
       border-radius: 9px;
       cursor: pointer;
       text-align: left;
-      transition: background 140ms var(--ease-standard);
+      transition: background 140ms var(--ease-standard), transform 160ms var(--ease-bounce);
+    }
+
+    .feed-summary:active:not(:disabled) {
+      transform: scale(0.98);
     }
 
     .feed-summary:hover {
@@ -649,7 +687,7 @@
       height: 16px;
       color: var(--primary);
       fill: currentColor;
-      transition: transform 140ms var(--ease-standard);
+      transition: transform 160ms var(--ease-bounce);
     }
 
     .feed-summary:active:not(:disabled) .feed-refresh-icon { transform: rotate(-35deg) scale(0.92); }
@@ -666,13 +704,17 @@
       box-shadow: 0 0 0 4px rgba(255, 77, 77, 0.1);
     }
 
+    .status-panel.loading .status-dot {
+      animation: status-dot-breathe 1.25s var(--ease-bounce) infinite;
+    }
+
     .status-panel.loading .status-dot::after {
       position: absolute;
       inset: -6px;
       border: 1px solid var(--secondary);
       border-radius: inherit;
       content: "";
-      animation: status-pulse 1.25s var(--ease-standard) infinite;
+      animation: status-pulse 1.25s var(--ease-bounce) infinite;
     }
 
     .status-panel.error .status-dot {
@@ -727,10 +769,10 @@
       min-height: 220px;
       background: var(--surface-container);
       border: 1px solid var(--outline-variant);
-      border-radius: 14px;
+      border-radius: 18px;
       box-shadow: 0 18px 48px var(--shadow);
       overflow: hidden;
-      animation: surface-enter 420ms 110ms var(--ease-standard) both;
+      animation: surface-enter 420ms 110ms var(--ease-spring) both;
     }
 
     .loading-state,
@@ -758,19 +800,26 @@
       background: linear-gradient(90deg, var(--surface-container-high) 25%, var(--surface-container-highest) 45%, var(--surface-container-high) 65%);
       background-size: 250% 100%;
       border-radius: 999px;
-      animation: shimmer 1.1s linear infinite;
+      transform-origin: left center;
+      /* shimmer stays linear (a smooth constant sweep); the second
+         animation gives each bar a staggered bounce-in entrance instead
+         of appearing all at once. */
+      animation: shimmer 1.1s linear infinite, loading-bar-pop 420ms var(--ease-bounce) both;
     }
 
     .loading-bar:nth-child(2) {
       width: 78%;
+      animation-delay: 0s, 70ms;
     }
 
     .loading-bar:nth-child(3) {
       width: 92%;
+      animation-delay: 0s, 140ms;
     }
 
     .loading-bar:nth-child(4) {
       width: 64%;
+      animation-delay: 0s, 210ms;
     }
 
     .error-state strong {
@@ -849,15 +898,21 @@
       border: 0 !important;
     }
 
-    .distance-actions,
-    .sort-control {
+    .distance-actions {
       display: flex;
       flex: 0 0 auto;
       align-items: center;
-      gap: 4px;
+      /* Wider than the 4px used inside .sort-control itself -- the sort
+         toggle and the location/permission button are unrelated actions
+         and were reading as one row of interchangeable buttons when
+         spaced the same as the two sort buttons are from each other. */
+      gap: 14px;
     }
 
     .sort-control {
+      display: flex;
+      align-items: center;
+      gap: 2px;
       padding: 1px;
       background: var(--surface-container-highest);
       border: 1px solid var(--outline-variant);
@@ -877,6 +932,12 @@
       border: 0;
       border-radius: 7px;
       cursor: pointer;
+      transition: transform 160ms var(--ease-bounce), background 140ms var(--ease-standard), color 140ms var(--ease-standard);
+    }
+
+    .sort-control button:active:not(:disabled),
+    .distance-tool-button:active:not(:disabled) {
+      transform: scale(0.88);
     }
 
     .sort-control button[aria-pressed="true"] {
@@ -903,10 +964,19 @@
       fill: currentColor;
     }
 
+    /* Circle at idle, morphing to a rounded square while busy -- a FAB-
+       style shape change (Material Expressive's shape-morph pattern) that
+       signals "actively doing something" beyond just the icon spin. */
     .distance-tool-button.primary {
       color: var(--on-primary-container);
       background: var(--primary-container);
       border: 1px solid rgba(77, 157, 255, 0.22);
+      border-radius: 50%;
+      transition: border-radius 320ms var(--ease-spring), transform 160ms var(--ease-bounce), background 140ms var(--ease-standard);
+    }
+
+    .distance-tool-button.primary.busy {
+      border-radius: 30%;
     }
 
     .distance-tool-button.quiet {
@@ -995,8 +1065,8 @@
 
     tbody tr:not(.map) {
       cursor: pointer;
-      animation: row-enter 280ms var(--ease-standard) both;
-      animation-delay: min(calc(var(--row-index, 0) * 16ms), 220ms);
+      animation: row-enter 320ms var(--ease-bounce) both;
+      animation-delay: min(calc(var(--row-index, 0) * 22ms), 260ms);
       transition: background 140ms var(--ease-standard), opacity 140ms var(--ease-standard);
     }
 
@@ -1218,8 +1288,8 @@
     }
 
     @keyframes row-enter {
-      from { transform: translateY(3px); }
-      to { transform: translateY(0); }
+      from { opacity: 0; transform: translateY(10px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     @keyframes status-pulse {
@@ -1227,9 +1297,19 @@
       to { opacity: 0; transform: scale(1.35); }
     }
 
+    @keyframes status-dot-breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.18); }
+    }
+
     @keyframes shimmer {
       from { background-position: 100% 0; }
       to { background-position: -100% 0; }
+    }
+
+    @keyframes loading-bar-pop {
+      from { opacity: 0; transform: scaleX(0.4); }
+      to { opacity: 1; transform: scaleX(1); }
     }
 
     @keyframes spin {
@@ -1263,7 +1343,6 @@
       .brand-mark {
         width: 36px;
         height: 36px;
-        border-radius: 12px;
       }
 
       .search-field {
@@ -1399,10 +1478,31 @@
         grid-column: 1 / 2;
         grid-row: 1;
         min-width: 0;
+        padding-left: 25px;
       }
 
       td.Address::before {
         margin-bottom: 5px;
+      }
+
+      /* Pulled out of the inline flow into a fixed corner slot so it
+         stops competing with the status pill and title for the same
+         line -- it's a cross-reference to the map marker number, not
+         part of the sentence those two form. */
+      .row-number {
+        position: absolute;
+        top: 0;
+        left: 0;
+        margin: 0;
+      }
+
+      /* Anchored to the title line instead of vertically centered in the
+         whole (often two-to-three-line) cell -- centering left it floating
+         in dead space between the address and community lines with
+         nothing visually tying it to either. */
+      .external-map-link {
+        top: 0;
+        transform: none;
       }
 
       td.DateTime {
@@ -1419,6 +1519,11 @@
         grid-column: 2 / 3;
         grid-row: 2;
         align-self: center;
+        /* Matches td.EventType's divider below so the rule reads as one
+           line spanning the full card width instead of stopping halfway
+           at the column gap, which looked like a layout bug. */
+        padding-top: 8px;
+        border-top: 1px solid var(--outline-variant);
         text-align: right;
       }
 
