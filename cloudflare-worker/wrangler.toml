@@ -1,0 +1,3 @@
+name = "sd5o-cad-proxy"
+main = "src/index.js"
+compatibility_date = "2026-10-14"
