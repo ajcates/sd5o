@@ -99,6 +99,7 @@ export class CallsList extends Component {
     this.locationMessage = "";
     this.locationDetailsOpen = false;
     this.sortAnnouncement = "";
+    this.listNumberByEventNumber = new Map();
     this.state = { phase: "loading", events: [], errorMessage: "" };
   }
 
@@ -316,6 +317,11 @@ export class CallsList extends Component {
     if (this.state.phase === "live") {
       this.applySelectionState();
       this.applyFilter();
+      // Tells the map which number belongs to each call so its markers
+      // (MapView.applyListNumbers) can show the same number as this
+      // call's row, including after a sort-order change that doesn't
+      // otherwise touch the map. See map-view.js's setEventNumbers.
+      this.props.onOrderChange?.(this.listNumberByEventNumber);
     }
   }
 
@@ -437,21 +443,23 @@ export class CallsList extends Component {
     // edge's color -- get their own explicit badge instead of competing
     // for the same visual slot.
     const badge = event.isNew ? `<span class="badge-new">New</span>` : event.isChanged ? `<span class="badge-changed">Updated</span>` : "";
+    const listNumber = rowIndex + 1;
     return html`
       <tr
         class="${classes.join(" ")}"
-        style="--row-index: ${rowIndex + 1}; --category-color: ${raw(categoryColor)}"
+        style="--row-index: ${listNumber}; --category-color: ${raw(categoryColor)}"
         data-event-number="${event.EventNumber}"
         data-on-click="selectRow"
         data-on-keydown="selectRowKeydown"
         role="button"
         tabindex="0"
         aria-pressed="${event.EventNumber === this.selectedEventNumber}"
-        aria-label="Select ${event.EventType} at ${address}"
+        aria-label="Call ${listNumber}: Select ${event.EventType} at ${address}"
         title="${categoryName}"
       >
         <td data-label="Address" class="Address">
           <div class="address-content">
+            <span class="row-number" aria-hidden="true">${listNumber}</span>
             ${raw(badge)}
             <span class="address-primary">${event.Address}</span>
             <span class="community">${event.Community}</span>
@@ -499,7 +507,9 @@ export class CallsList extends Component {
         </div>
       `;
     }
-    const rows = this.sortedEvents().map((event, i) => this.renderRow(event, i));
+    const sorted = this.sortedEvents();
+    this.listNumberByEventNumber = new Map(sorted.map((event, i) => [event.EventNumber, i + 1]));
+    const rows = sorted.map((event, i) => this.renderRow(event, i));
     return html`
       ${raw(this.renderDistanceControls())}
       <table>

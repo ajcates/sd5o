@@ -73,6 +73,7 @@ export class MapView extends Component {
     this.userLocation = null;
     this.selectedEventNumber = null;
     this.markerByEventNumber = new Map();
+    this.listNumberByEventNumber = new Map();
     this.markersBounds = null;
     this.hasFitInitialMarkers = false;
     this.legendOpen = false;
@@ -101,9 +102,10 @@ export class MapView extends Component {
       <div class="map-legend hidden" role="note">
         <strong>Map symbols</strong>
         <span><i class="legend-call"></i>Fill color shows call type</span>
+        <span><i class="legend-numbered"></i>Number matches the calls list</span>
         <span><i class="legend-open"></i>Red ring means open</span>
-        <span><i class="legend-selected"></i>Blue center means selected</span>
-        <span><i class="legend-user"></i>Hollow blue ring is you</span>
+        <span><i class="legend-selected"></i>Blue ring means selected</span>
+        <span><i class="legend-user"></i>Blue star is you</span>
       </div>
       <div class="map-notice" role="status" aria-live="polite"></div>
     `;
@@ -225,6 +227,22 @@ export class MapView extends Component {
     setTimeout(() => markerElement.classList.remove("selection-ping"), 650);
   }
 
+  /** Keeps each marker's displayed number in sync with its row's position
+   * in the calls list (CallsList.renderRow) -- CallsList calls this via
+   * props.onOrderChange every time it (re)renders, including on sort
+   * changes, so the two numbers stay matched without rebuilding markers. */
+  setEventNumbers(numberByEventNumber) {
+    this.listNumberByEventNumber = numberByEventNumber;
+    this.applyListNumbers();
+  }
+
+  applyListNumbers() {
+    for (const [eventNumber, marker] of this.markerByEventNumber) {
+      const label = marker.getElement()?.querySelector(".call-marker-number");
+      if (label) label.textContent = this.listNumberByEventNumber.get(eventNumber) ?? "";
+    }
+  }
+
   /** Location is acquired by main.js only after the user presses the
    * explained "Use my location" action. MapView receives the in-memory
    * reading for its marker but never requests or persists coordinates. */
@@ -337,13 +355,14 @@ export class MapView extends Component {
     const pulseStyle = pulse
       ? `--pulse-duration:${pulse.duration}s;--pulse-scale:${pulse.scale};--pulse-opacity:${pulse.opacity}`
       : "";
+    const number = this.listNumberByEventNumber.get(event.EventNumber) ?? "";
     const icon = L.divIcon({
       className: "",
       html: `<span class="call-marker${pulse ? " pulsing" : ""}${event.IsOpen ? " open" : ""}${
         event.EventNumber === this.selectedEventNumber ? " selected" : ""
-      }" style="--marker-color:${colorVar};${pulseStyle}"></span>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7],
+      }" style="--marker-color:${colorVar};${pulseStyle}"><b class="call-marker-number">${number}</b></span>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
     });
     const marker = L.marker([point.lat, point.lon], {
       icon,
