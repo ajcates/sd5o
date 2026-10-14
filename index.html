@@ -898,19 +898,9 @@
       border: 0 !important;
     }
 
-    .distance-actions {
-      display: flex;
-      flex: 0 0 auto;
-      align-items: center;
-      /* Wider than the 4px used inside .sort-control itself -- the sort
-         toggle and the location/permission button are unrelated actions
-         and were reading as one row of interchangeable buttons when
-         spaced the same as the two sort buttons are from each other. */
-      gap: 14px;
-    }
-
     .sort-control {
       display: flex;
+      flex: 0 0 auto;
       align-items: center;
       gap: 2px;
       padding: 1px;
@@ -919,8 +909,7 @@
       border-radius: 9px;
     }
 
-    .sort-control button,
-    .distance-tool-button {
+    .sort-control button {
       display: grid;
       flex: 0 0 auto;
       width: 36px;
@@ -935,8 +924,7 @@
       transition: transform 160ms var(--ease-bounce), background 140ms var(--ease-standard), color 140ms var(--ease-standard);
     }
 
-    .sort-control button:active:not(:disabled),
-    .distance-tool-button:active:not(:disabled) {
+    .sort-control button:active:not(:disabled) {
       transform: scale(0.88);
     }
 
@@ -945,47 +933,23 @@
       background: var(--primary-container);
     }
 
-    .sort-control button:disabled,
-    .distance-tool-button:disabled {
+    .sort-control button:disabled {
       cursor: not-allowed;
       opacity: 0.42;
     }
 
-    .sort-control button:focus-visible,
-    .distance-tool-button:focus-visible {
+    .sort-control button:focus-visible {
       outline: 2px solid var(--primary);
       outline-offset: 1px;
     }
 
-    .sort-control svg,
-    .distance-tool-button svg {
+    .sort-control svg {
       width: 16px;
       height: 16px;
       fill: currentColor;
     }
 
-    /* Circle at idle, morphing to a rounded square while busy -- a FAB-
-       style shape change (Material Expressive's shape-morph pattern) that
-       signals "actively doing something" beyond just the icon spin. */
-    .distance-tool-button.primary {
-      color: var(--on-primary-container);
-      background: var(--primary-container);
-      border: 1px solid rgba(77, 157, 255, 0.22);
-      border-radius: 50%;
-      transition: border-radius 320ms var(--ease-spring), transform 160ms var(--ease-bounce), background 140ms var(--ease-standard);
-    }
-
-    .distance-tool-button.primary.busy {
-      border-radius: 30%;
-    }
-
-    .distance-tool-button.quiet {
-      color: var(--on-surface-variant);
-      background: transparent;
-      border: 1px solid var(--outline-variant);
-    }
-
-    .distance-tool-button.busy svg {
+    .sort-control button.busy svg {
       animation: spin 720ms linear infinite;
     }
 
@@ -1396,10 +1360,6 @@
         border: 1px solid var(--outline-variant);
         border-top: 0;
         border-radius: 0 0 12px 12px;
-      }
-
-      .distance-actions {
-        justify-content: flex-end;
       }
 
       thead {

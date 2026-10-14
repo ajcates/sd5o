@@ -36,6 +36,7 @@ function boot() {
     },
     onRequestLocation: requestUserLocation,
     onStopLocation: stopUsingLocation,
+    onLocateOnMap: () => mapView.centerOnUserLocation(),
     onOrderChange: (numberByEventNumber) => mapView.setEventNumbers(numberByEventNumber),
   });
 

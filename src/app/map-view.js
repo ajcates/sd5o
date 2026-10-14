@@ -212,6 +212,22 @@ export class MapView extends Component {
     this.leafletMap.setView(marker.getLatLng(), 16, mapMotionOptions());
   }
 
+  /** Re-centers on the user's location without touching markers or
+   * selection -- used when "Sort by nearest" is pressed again while
+   * already the active sort, since a second tap has no new sort state
+   * to toggle into and would otherwise do nothing. */
+  async centerOnUserLocation() {
+    if (!this.userLocation) return;
+    const wasOpen = this.isOpen;
+    this.open();
+    await this.ensureMapInitialized();
+    if (!wasOpen) {
+      await new Promise((resolve) => setTimeout(resolve, OPEN_ANIMATION_MS));
+      this.leafletMap.invalidateSize();
+    }
+    this.leafletMap.setView([this.userLocation.latitude, this.userLocation.longitude], 15, mapMotionOptions());
+  }
+
   /** Keep exactly one call marker visibly selected. The state is stored
    * independently from Leaflet's current DOM so it survives a marker
    * refresh and is applied again when new marker elements are built. */

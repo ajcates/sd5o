@@ -226,6 +226,10 @@ export class CallsList extends Component {
 
   sortByDistance() {
     if (this.locationStatus !== "ready") return;
+    if (this.sortMode === "distance") {
+      this.props.onLocateOnMap?.();
+      return;
+    }
     this.sortMode = "distance";
     this.sortAnnouncement = "Sorted by nearest";
     this.update();
@@ -576,17 +580,16 @@ export class CallsList extends Component {
               : "Calculating…"
             : "Unavailable";
     const locationIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2h2v3.07A7.01 7.01 0 0 1 18.93 11H22v2h-3.07A7.01 7.01 0 0 1 13 18.93V22h-2v-3.07A7.01 7.01 0 0 1 5.07 13H2v-2h3.07A7.01 7.01 0 0 1 11 5.07V2Zm1 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/></svg>`;
-    const locationAction = isReady
-      ? `<button type="button" class="distance-tool-button" data-on-click="refreshLocation" title="Refresh location" aria-label="Refresh location">
-           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.1A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h8V3l-3.35 3.35Z"/></svg>
-         </button>
-         <button type="button" class="distance-tool-button quiet" data-on-click="stopUsingLocation" title="Stop using location" aria-label="Stop using location">
-           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z"/></svg>
-         </button>`
-      : `<button type="button" class="distance-tool-button primary${busy ? " busy" : ""}" data-on-click="requestLocation" title="${
-          busy ? "Finding your location" : "Use my location"
-        }" aria-label="Use my location. Your location stays on this device and is used only for straight-line distance."${
-          busy ? " disabled" : ""
+    const nearestIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-8.4 18-2.1-7.5L3 11.4 21 3Zm-4.7 4.7-8 3.7 3.8 1.1 1.1 3.8 3.1-8.6Z"/></svg>`;
+    const nearestLabel = this.sortMode === "distance" ? "Locate me on map" : "Sort by nearest";
+    const nearestButton = isReady
+      ? `<button type="button" data-on-click="sortByDistance" title="${nearestLabel}" aria-label="${nearestLabel}" aria-pressed="${
+          this.sortMode === "distance"
+        }">${nearestIcon}</button>`
+      : `<button type="button" data-on-click="requestLocation" title="${
+          busy ? "Finding your location" : "Use my location to sort by nearest"
+        }" aria-label="Use my location to sort by nearest. Your location stays on this device and is used only for straight-line distance."${
+          busy ? ' class="busy" disabled' : ""
         }>${locationIcon}</button>`;
     return `
       <section class="distance-controls ${this.locationStatus}" aria-label="Distance and sorting controls" aria-busy="${busy}">
@@ -596,26 +599,19 @@ export class CallsList extends Component {
           <span class="distance-compact-state" aria-hidden="true">${compactStatus}</span>
           <span class="visually-hidden" role="status" aria-live="polite">${statusText}</span>
         </button>
-        <div class="distance-actions">
-          <div class="sort-control" aria-label="Sort calls">
-            <button type="button" data-on-click="sortByTime" title="Sort by newest" aria-label="Sort by newest" aria-pressed="${
-              this.sortMode === "time"
-            }">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10.01 10.01 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8.01 8.01 0 0 1-8 8Zm1-13h-2v6l5.2 3.1 1-1.7-4.2-2.5V7Z"/></svg>
-            </button>
-            <button type="button" data-on-click="sortByDistance" title="Sort by nearest" aria-label="Sort by nearest" aria-pressed="${
-              this.sortMode === "distance"
-            }"${isReady ? "" : " disabled"}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-8.4 18-2.1-7.5L3 11.4 21 3Zm-4.7 4.7-8 3.7 3.8 1.1 1.1 3.8 3.1-8.6Z"/></svg>
-            </button>
-          </div>
-          ${locationAction}
+        <div class="sort-control" aria-label="Sort calls">
+          <button type="button" data-on-click="sortByTime" title="Sort by newest" aria-label="Sort by newest" aria-pressed="${
+            this.sortMode === "time"
+          }">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10.01 10.01 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8.01 8.01 0 0 1-8 8Zm1-13h-2v6l5.2 3.1 1-1.7-4.2-2.5V7Z"/></svg>
+          </button>
+          ${nearestButton}
         </div>
         <span class="visually-hidden" role="status" aria-live="polite">${this.sortAnnouncement}</span>
       </section>
       <div class="location-detail-panel${this.locationDetailsOpen ? " panel-pop" : " hidden"}" id="location-detail-panel" role="status">
         <span>${statusText}</span>
-        ${this.locationStatus === "ready" ? "" : `<button type="button" data-on-click="refreshLocation">Try again</button>`}
+        ${isReady ? `<button type="button" data-on-click="stopUsingLocation">Stop using location</button>` : `<button type="button" data-on-click="refreshLocation">Try again</button>`}
       </div>`;
   }
 }
